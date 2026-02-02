@@ -1,11 +1,18 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { signIn } from '@/lib/auth'
 
 export default function LoginPage() {
+  
+  // Hide navbar on this page
+  useEffect(() => {
+    document.body.classList.add('hide-navbar')
+    return () => document.body.classList.remove('hide-navbar')
+  }, [])
+
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')

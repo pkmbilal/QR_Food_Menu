@@ -6,6 +6,13 @@ import Link from 'next/link'
 import { signUp } from '@/lib/auth'
 
 export default function SignupPage() {
+
+  // Hide navbar on this page
+  useEffect(() => {
+    document.body.classList.add('hide-navbar')
+    return () => document.body.classList.remove('hide-navbar')
+  }, [])
+  
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',

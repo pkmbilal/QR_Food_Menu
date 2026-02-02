@@ -1,5 +1,6 @@
 import './globals.css'
 import { CartProvider } from './CartContext'
+import LayoutWithNavbar from '@/components/LayoutWithNavbar'
 
 export const metadata = {
   title: 'QR Menu System',
@@ -11,7 +12,9 @@ export default function RootLayout({ children }) {
     <html lang="en">
       <body>
         <CartProvider>
-          {children}
+          <LayoutWithNavbar>
+            {children}
+          </LayoutWithNavbar>
         </CartProvider>
       </body>
     </html>

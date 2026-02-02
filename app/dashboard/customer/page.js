@@ -120,9 +120,12 @@ export default function CustomerDashboard() {
                   </span>
                 </div>
               </div>
-              <button className="w-full mt-4 bg-gray-200 hover:bg-gray-300 text-gray-800 py-2 rounded-lg font-semibold cursor-pointer">
+              <Link
+                href="/dashboard/customer/edit-profile"
+                className="block w-full mt-4 bg-gray-200 hover:bg-gray-300 text-gray-800 py-2 rounded-lg font-semibold text-center transition-colors"
+              >
                 Edit Profile
-              </button>
+              </Link>
             </div>
 
             {/* Become Owner Card */}
