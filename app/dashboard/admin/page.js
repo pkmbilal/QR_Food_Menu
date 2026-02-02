@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link' 
 import { getCurrentUser, getUserProfile, signOut } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
 
@@ -577,30 +578,21 @@ const handleDeleteUser = async (userId, userName) => {
 
             {/* Restaurants Tab */}
             {activeTab === 'restaurants' && (
-              <div className="space-y-3">
-                {allRestaurants.map((restaurant) => (
-                  <div key={restaurant.id} className="border border-gray-200 rounded-lg p-4">
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <h3 className="font-bold text-gray-800">{restaurant.name}</h3>
-                        <p className="text-sm text-gray-600">/{restaurant.slug}</p>
-                        {restaurant.address && (
-                          <p className="text-xs text-gray-500 mt-1">📍 {restaurant.address}</p>
-                        )}
-                      </div>
-                      <div className="text-right">
-                        <span className={`text-xs px-2 py-1 rounded-full ${
-                          restaurant.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
-                        }`}>
-                          {restaurant.is_active ? 'Active' : 'Inactive'}
-                        </span>
-                        <p className="text-xs text-gray-500 mt-1">
-                          {new Date(restaurant.created_at).toLocaleDateString()}
-                        </p>
-                      </div>
-                    </div>
+              <div className="space-y-4">
+                {allRestaurants.length === 0 ? (
+                  <div className="text-center py-12">
+                    <div className="text-5xl mb-3">🏪</div>
+                    <p className="text-gray-600">No restaurants yet</p>
                   </div>
-                ))}
+                ) : (
+                  allRestaurants.map((restaurant) => (
+                    <RestaurantCard
+                      key={restaurant.id}
+                      restaurant={restaurant}
+                      onUpdate={loadRestaurants}
+                    />
+                  ))
+                )}
               </div>
             )}
           </div>
@@ -608,4 +600,194 @@ const handleDeleteUser = async (userId, userName) => {
       </div>
     </div>
   )
+  // Restaurant Card Component with Actions
+function RestaurantCard({ restaurant, onUpdate }) {
+  const [menuItemCount, setMenuItemCount] = useState(0)
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    loadMenuItemCount()
+  }, [restaurant.id])
+
+  async function loadMenuItemCount() {
+    const { count } = await supabase
+      .from('menu_items')
+      .select('*', { count: 'exact', head: true })
+      .eq('restaurant_id', restaurant.id)
+    
+    setMenuItemCount(count || 0)
+  }
+
+  const handleToggleStatus = async () => {
+  const action = restaurant.is_active ? 'disable' : 'enable'
+  if (!confirm(`Are you sure you want to ${action} ${restaurant.name}?`)) return
+
+  setLoading(true)
+  
+  try {
+    const { data, error } = await supabase
+      .from('restaurants')
+      .update({ is_active: !restaurant.is_active })
+      .eq('id', restaurant.id)
+      .select()
+
+    if (error) {
+      console.error('Supabase error:', error)
+      alert('Error updating restaurant: ' + error.message)
+      setLoading(false)
+      return
+    }
+
+    alert(`✅ Restaurant ${action}d successfully`)
+    await onUpdate() // Refresh list
+    
+  } catch (err) {
+    console.error('Caught error:', err)
+    alert('Error updating restaurant. Please try again.')
+  } finally {
+    setLoading(false)
+  }
+  }
+
+  const handleDelete = async () => {
+    const confirmText = prompt(
+      `⚠️ WARNING: This will permanently delete "${restaurant.name}" and all its menu items!\n\n` +
+      `Type "${restaurant.name}" to confirm:`
+    )
+
+    if (confirmText !== restaurant.name) {
+      alert('Deletion cancelled')
+      return
+    }
+
+    setLoading(true)
+    const { error } = await supabase
+      .from('restaurants')
+      .delete()
+      .eq('id', restaurant.id)
+
+    if (error) {
+      alert('Error deleting restaurant: ' + error.message)
+    } else {
+      alert('✅ Restaurant deleted successfully')
+      onUpdate() // Refresh list
+    }
+    setLoading(false)
+  }
+
+  return (
+    <div className="border border-gray-200 rounded-lg p-6 hover:border-gray-300 transition">
+      <div className="flex items-start justify-between mb-4">
+        <div className="flex-1">
+          <div className="flex items-center gap-3 mb-2">
+            <h3 className="font-bold text-gray-800 text-xl">{restaurant.name}</h3>
+            {!restaurant.is_active && (
+              <span className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full font-semibold">
+                DISABLED
+              </span>
+            )}
+            {restaurant.is_active && (
+              <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full font-semibold">
+                ACTIVE
+              </span>
+            )}
+          </div>
+
+          <div className="space-y-1 text-sm text-gray-600">
+            <p className="flex items-center gap-2">
+              <span className="font-semibold">URL:</span>
+              <code className="bg-gray-100 px-2 py-0.5 rounded text-xs">/menu/{restaurant.slug}</code>
+              <Link
+                href={`/menu/${restaurant.slug}`}
+                target="_blank"
+                className="text-orange-600 hover:text-orange-700 text-xs"
+              >
+                View →
+              </Link>
+            </p>
+            
+            {restaurant.owner_email && (
+              <p className="flex items-center gap-2">
+                <span className="font-semibold">Owner:</span>
+                <span>{restaurant.owner_email}</span>
+              </p>
+            )}
+
+            {restaurant.phone && (
+              <p className="flex items-center gap-2">
+                <span className="font-semibold">Phone:</span>
+                <span>{restaurant.phone}</span>
+              </p>
+            )}
+
+            {restaurant.address && (
+              <p className="flex items-center gap-2">
+                <span className="font-semibold">Address:</span>
+                <span>{restaurant.address}</span>
+              </p>
+            )}
+
+            <p className="flex items-center gap-2">
+              <span className="font-semibold">Menu Items:</span>
+              <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full text-xs font-semibold">
+                {menuItemCount}
+              </span>
+            </p>
+
+            <p className="flex items-center gap-2 text-xs">
+              <span className="font-semibold">Created:</span>
+              <span>{new Date(restaurant.created_at).toLocaleDateString()}</span>
+            </p>
+
+            {restaurant.approved_at && (
+              <p className="flex items-center gap-2 text-xs">
+                <span className="font-semibold">Approved:</span>
+                <span>{new Date(restaurant.approved_at).toLocaleDateString()}</span>
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Action Buttons */}
+      <div className="flex gap-2 flex-wrap pt-4 border-t border-gray-100">
+        <Link
+          href={`/menu/${restaurant.slug}`}
+          target="_blank"
+          className="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg font-semibold text-sm hover:bg-blue-200 transition-colors"
+        >
+          View Menu
+        </Link>
+
+        <Link
+          href={`/qr/${restaurant.slug}`}
+          target="_blank"
+          className="px-4 py-2 bg-green-100 text-green-700 rounded-lg font-semibold text-sm hover:bg-green-200 transition-colors"
+        >
+          QR Code
+        </Link>
+
+        <button
+          onClick={handleToggleStatus}
+          disabled={loading}
+          className={`px-4 py-2 rounded-lg font-semibold text-sm transition-colors ${
+            restaurant.is_active
+              ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
+              : 'bg-green-100 text-green-700 hover:bg-green-200'
+          } disabled:opacity-50`}
+        >
+          {restaurant.is_active ? 'Disable Restaurant' : 'Enable Restaurant'}
+        </button>
+
+        <button
+          onClick={handleDelete}
+          disabled={loading}
+          className="px-4 py-2 bg-red-100 text-red-700 rounded-lg font-semibold text-sm hover:bg-red-200 transition-colors disabled:opacity-50"
+        >
+          Delete Restaurant
+        </button>
+      </div>
+    </div>
+  )
+}
 }

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { getCurrentUser, getUserProfile, signOut, getUserFavorites, getUserRequests } from '@/lib/auth'
+import { getCurrentUser, getUserProfile, signOut, getUserFavorites, getUserRequests, removeFromFavorites } from '@/lib/auth'
 
 export default function CustomerDashboard() {
   const [user, setUser] = useState(null)
@@ -190,21 +190,48 @@ export default function CustomerDashboard() {
                   <p className="text-sm text-gray-500">
                     Browse restaurants and add them to your favorites!
                   </p>
+                  <Link 
+                    href="/"
+                    className="inline-block mt-4 bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-lg font-semibold transition-colors"
+                  >
+                    Browse Restaurants
+                  </Link>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {favorites.map((fav) => (
-                    <Link
-                      key={fav.id}
-                      href={`/menu/${fav.restaurants.slug}`}
-                      className="border border-gray-200 rounded-lg p-4 hover:border-orange-500 hover:shadow-md transition-all"
-                    >
-                      <h3 className="font-bold text-gray-800 mb-1">{fav.restaurants.name}</h3>
-                      {fav.restaurants.address && (
-                        <p className="text-sm text-gray-600 mb-2">📍 {fav.restaurants.address}</p>
-                      )}
-                      <span className="text-orange-600 text-sm font-semibold">View Menu →</span>
-                    </Link>
+                    <div key={fav.id} className="relative border border-gray-200 rounded-lg p-4 hover:border-orange-500 hover:shadow-md transition-all group">
+                      <Link href={`/menu/${fav.restaurants.slug}`} className="block">
+                        <h3 className="font-bold text-gray-800 mb-1 group-hover:text-orange-600 transition-colors">
+                          {fav.restaurants.name}
+                        </h3>
+                        {fav.restaurants.address && (
+                          <p className="text-sm text-gray-600 mb-2">📍 {fav.restaurants.address}</p>
+                        )}
+                        <span className="text-orange-600 text-sm font-semibold">View Menu →</span>
+                      </Link>
+                      
+                      {/* Remove from Favorites Button */}
+                      <button
+                        onClick={async (e) => {
+                          e.preventDefault()
+                          if (confirm(`Remove ${fav.restaurants.name} from favorites?`)) {
+                            const { error } = await removeFromFavorites(user.id, fav.restaurant_id)
+                            if (!error) {
+                              // Refresh favorites
+                              const { data: userFavorites } = await getUserFavorites(user.id)
+                              setFavorites(userFavorites || [])
+                            }
+                          }
+                        }}
+                        className="absolute top-3 right-3 p-2 bg-red-100 text-red-600 rounded-full hover:bg-red-200 transition-colors opacity-0 group-hover:opacity-100"
+                        title="Remove from favorites"
+                      >
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                        </svg>
+                      </button>
+                    </div>
                   ))}
                 </div>
               )}
