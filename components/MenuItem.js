@@ -39,11 +39,11 @@ export default function MenuItem({ item, restaurant }) {
         
         {/* Price and Button Row */}
         <div className="flex items-center justify-between">
-          <span className="text-xl font-bold text-green-600">
+          <span className="text-xl font-bold text-primray">
             SAR {item.price}
           </span>
           
-          <button className="bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded-lg transition-colors cursor-pointer" onClick={() => handleAddToCart(item)}>
+          <button className="bg-primary hover:bg-green-600 text-white px-3 py-2 rounded-lg transition-colors cursor-pointer" onClick={() => handleAddToCart(item)}>
             Add to Cart
           </button>
         </div>

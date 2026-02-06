@@ -11,6 +11,7 @@ export default function RequestRestaurantPage() {
   const [existingRequests, setExistingRequests] = useState([])
   const [formData, setFormData] = useState({
     restaurantName: '',
+    imageURL: '',
     phone: '',
     address: '',
     description: ''
@@ -68,6 +69,7 @@ export default function RequestRestaurantPage() {
     try {
       const { data, error: submitError } = await submitRestaurantRequest(user.id, {
         name: formData.restaurantName,
+        image_url: formData.imageURL,
         phone: formData.phone,
         address: formData.address,
         description: formData.description
@@ -83,6 +85,7 @@ export default function RequestRestaurantPage() {
       setSuccess(true)
       setFormData({
         restaurantName: '',
+        imageURL: '',
         phone: '',
         address: '',
         description: ''
@@ -109,7 +112,7 @@ export default function RequestRestaurantPage() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
           <p className="text-gray-600">Loading...</p>
         </div>
       </div>
@@ -126,7 +129,7 @@ export default function RequestRestaurantPage() {
         <div className="mb-8">
           <Link
             href="/dashboard/customer"
-            className="text-orange-600 hover:text-orange-700 font-semibold mb-4 inline-block"
+            className="text-primary hover:text-green-600 font-semibold mb-4 inline-block"
           >
             ← Back to Dashboard
           </Link>
@@ -174,12 +177,31 @@ export default function RequestRestaurantPage() {
                     value={formData.restaurantName}
                     onChange={(e) => setFormData({...formData, restaurantName: e.target.value})}
                     placeholder="e.g., Pizza Palace"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                     required
                     disabled={hasPendingRequest}
                   />
                   <p className="text-xs text-gray-500 mt-1">
                     The official name of your restaurant
+                  </p>
+                </div>
+
+                {/* Image URL */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Restaurant Image URL *
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.imageURL}
+                    onChange={(e) => setFormData({...formData, imageURL: e.target.value})}
+                    placeholder="e.g., https://images.pexels.com/photos/2750900/pexels-photo-2750900.jpeg"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                    required
+                    disabled={hasPendingRequest}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Your restaurant image URL
                   </p>
                 </div>
 
@@ -193,7 +215,7 @@ export default function RequestRestaurantPage() {
                     value={formData.phone}
                     onChange={(e) => setFormData({...formData, phone: e.target.value})}
                     placeholder="966501234567"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                     required
                     disabled={hasPendingRequest}
                   />
@@ -212,7 +234,7 @@ export default function RequestRestaurantPage() {
                     value={formData.address}
                     onChange={(e) => setFormData({...formData, address: e.target.value})}
                     placeholder="123 Main Street, City, Country"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                     required
                     disabled={hasPendingRequest}
                   />
@@ -231,7 +253,7 @@ export default function RequestRestaurantPage() {
                     onChange={(e) => setFormData({...formData, description: e.target.value})}
                     placeholder="Tell us about your restaurant, cuisine type, why you want to join our platform..."
                     rows="4"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                     disabled={hasPendingRequest}
                   />
                   <p className="text-xs text-gray-500 mt-1">
@@ -250,7 +272,7 @@ export default function RequestRestaurantPage() {
                 <button
                   type="submit"
                   disabled={submitting || hasPendingRequest}
-                  className="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-lg font-semibold transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  className="w-full bg-primary hover:bg-green-600 text-white py-3 rounded-lg font-semibold transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed cursor-pointer"
                 >
                   {submitting ? 'Submitting Request...' : 
                    hasPendingRequest ? 'Request Already Pending' : 

@@ -59,7 +59,7 @@ export default function CustomerDashboard() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
           <p className="text-gray-600">Loading...</p>
         </div>
       </div>
@@ -71,8 +71,7 @@ export default function CustomerDashboard() {
       {/* Header */}
       <div className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 py-6">
-          <div className="flex justify-between items-center">
-            <div>
+          <div>
               <h1 className="hidden sm:block sm:text-3xl font-bold text-gray-800">
                 Welcome, {profile?.full_name || 'User'}! 👋
               </h1>
@@ -82,13 +81,6 @@ export default function CustomerDashboard() {
               </h1>
               <p className="text-gray-600">Customer Dashboard</p>
             </div>
-            <button
-              onClick={handleLogout}
-              className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-semibold transition-colors cursor-pointer"
-            >
-              Logout
-            </button>
-          </div>
         </div>
       </div>
 
@@ -129,14 +121,14 @@ export default function CustomerDashboard() {
             </div>
 
             {/* Become Owner Card */}
-            <div className="bg-gradient-to-br from-orange-500 to-red-500 rounded-lg shadow p-6 text-white">
+            <div className="bg-primary rounded-lg shadow p-6 text-white">
               <h2 className="text-xl font-bold mb-2">Own a Restaurant?</h2>
-              <p className="text-orange-100 text-sm mb-4">
+              <p className="text-white text-sm mb-4">
                 Join our platform and manage your restaurant's digital menu!
               </p>
               <Link
                 href="/dashboard/request-restaurant"
-                className="block w-full bg-white text-orange-600 py-2 rounded-lg font-semibold text-center hover:bg-orange-50 transition-colors"
+                className="block w-full bg-white text-primary hover:text-green-600 py-2 rounded-lg font-semibold text-center transition-colors shadow-lg"
               >
                 Request to Become Owner
               </Link>

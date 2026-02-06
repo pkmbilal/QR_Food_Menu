@@ -295,7 +295,7 @@ const handleDeleteUser = async (userId, userName) => {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
           <p className="text-gray-600">Loading admin dashboard...</p>
         </div>
       </div>
@@ -305,23 +305,14 @@ const handleDeleteUser = async (userId, userName) => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-gradient-to-r from-purple-600 to-blue-600 text-white">
+      <div className="bg-primary text-white">
         <div className="max-w-7xl mx-auto px-4 py-6">
-          <div className="flex justify-between items-center">
-            <div>
+          <div>
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-2xl">👑</span>
                 <h1 className="text-3xl font-bold">Admin Dashboard</h1>
               </div>
-              <p className="text-purple-100">Welcome, {profile?.full_name || 'Admin'}</p>
+              <p className="text-gray-100">Welcome, {profile?.full_name || 'Admin'}</p>
             </div>
-            <button
-              onClick={handleLogout}
-              className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg font-semibold transition-colors"
-            >
-              Logout
-            </button>
-          </div>
         </div>
       </div>
 
@@ -354,7 +345,7 @@ const handleDeleteUser = async (userId, userName) => {
                 onClick={() => setActiveTab('pending')}
                 className={`py-4 px-2 border-b-2 font-semibold transition-colors ${
                   activeTab === 'pending'
-                    ? 'border-orange-500 text-orange-600'
+                    ? 'border-primary text-green-600'
                     : 'border-transparent text-gray-600 hover:text-gray-800'
                 }`}
               >
@@ -364,7 +355,7 @@ const handleDeleteUser = async (userId, userName) => {
                 onClick={() => setActiveTab('all')}
                 className={`py-4 px-2 border-b-2 font-semibold transition-colors ${
                   activeTab === 'all'
-                    ? 'border-orange-500 text-orange-600'
+                    ? 'border-primary text-green-600'
                     : 'border-transparent text-gray-600 hover:text-gray-800'
                 }`}
               >
@@ -374,7 +365,7 @@ const handleDeleteUser = async (userId, userName) => {
                 onClick={() => setActiveTab('users')}
                 className={`py-4 px-2 border-b-2 font-semibold transition-colors ${
                   activeTab === 'users'
-                    ? 'border-orange-500 text-orange-600'
+                    ? 'border-primary text-green-600'
                     : 'border-transparent text-gray-600 hover:text-gray-800'
                 }`}
               >
@@ -384,7 +375,7 @@ const handleDeleteUser = async (userId, userName) => {
                 onClick={() => setActiveTab('restaurants')}
                 className={`py-4 px-2 border-b-2 font-semibold transition-colors ${
                   activeTab === 'restaurants'
-                    ? 'border-orange-500 text-orange-600'
+                    ? 'border-primary text-green-600'
                     : 'border-transparent text-gray-600 hover:text-gray-800'
                 }`}
               >
@@ -406,7 +397,7 @@ const handleDeleteUser = async (userId, userName) => {
                 ) : (
                   <div className="space-y-4">
                     {pendingRequests.map((request) => (
-                      <div key={request.id} className="border border-gray-200 rounded-lg p-6 hover:border-orange-300 transition">
+                      <div key={request.id} className="border border-gray-200 rounded-lg p-6 hover:border-primary transition">
                         <div className="flex justify-between items-start mb-4">
                           <div className="flex-1">
                             <h3 className="text-xl font-bold text-gray-800 mb-1">
@@ -444,13 +435,13 @@ const handleDeleteUser = async (userId, userName) => {
                             onClick={() => handleApprove(request)}
                             className="flex-1 bg-green-500 hover:bg-green-600 text-white py-2 rounded-lg font-semibold transition-colors"
                           >
-                            ✅ Approve
+                            Approve
                           </button>
                           <button
                             onClick={() => handleReject(request)}
                             className="flex-1 bg-red-500 hover:bg-red-600 text-white py-2 rounded-lg font-semibold transition-colors"
                           >
-                            ❌ Reject
+                            Reject
                           </button>
                         </div>
                       </div>

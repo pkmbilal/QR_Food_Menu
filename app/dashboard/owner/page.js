@@ -100,7 +100,7 @@ export default function OwnerDashboard() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
           <p className="text-gray-600">Loading...</p>
         </div>
       </div>
@@ -143,7 +143,7 @@ export default function OwnerDashboard() {
               </Link>
               <button
                 onClick={handleLogout}
-                className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-semibold transition-colors"
+                className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-semibold transition-colors cursor-pointer"
               >
                 Logout
               </button>
@@ -201,7 +201,7 @@ export default function OwnerDashboard() {
         <div className="mb-6">
           <button
             onClick={() => setShowAddForm(!showAddForm)}
-            className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+            className="bg-primary hover:bg-green-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors cursor-pointer"
           >
             {showAddForm ? '✕ Cancel' : '+ Add New Item'}
           </button>
