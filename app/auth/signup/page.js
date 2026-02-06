@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { signUp } from '@/lib/auth'
 
+import { Pizza } from 'lucide-react'
+
 export default function SignupPage() {
 
   // Hide navbar on this page
@@ -66,12 +68,12 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-orange-100 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-gradient-to-br from-green-50 to-green-100 flex items-center justify-center px-4">
       <div className="bg-white rounded-lg shadow-xl p-8 w-full max-w-md">
-        <div className="text-center mb-8">
-          <div className="text-5xl mb-4">🍕</div>
+        <div className="flex flex-col items-center justify-center mb-6">
+          <div className="text-5xl mb-4"><Pizza size={48} color="#00c951" /></div>
           <h1 className="text-3xl font-bold text-gray-800 mb-2">Create Account</h1>
-          <p className="text-gray-600">Join QR Menu System</p>
+          <p className="text-gray-600">Join ScanEat</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -85,7 +87,7 @@ export default function SignupPage() {
               value={formData.fullName}
               onChange={(e) => setFormData({...formData, fullName: e.target.value})}
               placeholder="John Doe"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
             />
           </div>
 
@@ -99,7 +101,7 @@ export default function SignupPage() {
               value={formData.email}
               onChange={(e) => setFormData({...formData, email: e.target.value})}
               placeholder="your@email.com"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
               required
             />
           </div>
@@ -114,13 +116,13 @@ export default function SignupPage() {
               value={formData.password}
               onChange={(e) => setFormData({...formData, password: e.target.value})}
               placeholder="At least 6 characters"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
               required
             />
           </div>
 
           {/* Confirm Password */}
-          <div>
+          <div className='mb-6'>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
               Confirm Password *
             </label>
@@ -129,7 +131,7 @@ export default function SignupPage() {
               value={formData.confirmPassword}
               onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
               placeholder="Re-enter password"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
               required
             />
           </div>
@@ -145,7 +147,7 @@ export default function SignupPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-lg font-semibold transition-colors disabled:bg-gray-400"
+            className="w-full bg-primary hover:bg-green-600 text-white py-3 rounded-lg font-semibold transition-colors disabled:bg-gray-400 cursor-pointer"
           >
             {loading ? 'Creating Account...' : 'Create Account'}
           </button>
@@ -155,7 +157,7 @@ export default function SignupPage() {
         <div className="mt-6 text-center">
           <p className="text-gray-600 text-sm">
             Already have an account?{' '}
-            <Link href="/auth/login" className="text-orange-600 hover:text-orange-700 font-semibold">
+            <Link href="/auth/login" className="text-primary hover:text-green-600 font-semibold">
               Sign In
             </Link>
           </p>
