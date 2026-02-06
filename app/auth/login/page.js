@@ -52,9 +52,9 @@ export default function LoginPage() {
           <p className="text-gray-600">Sign in to your account</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} >
           {/* Email */}
-          <div>
+          <div className='mb-4'>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
               Email
             </label>
@@ -69,8 +69,8 @@ export default function LoginPage() {
           </div>
 
           {/* Password */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
+          <div className='mb-2'>
+            <label className="block text-sm font-semibold text-gray-700">
               Password
             </label>
             <input
@@ -78,10 +78,19 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Enter your password"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              className="w-full px-4 py-3 mb-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
               required
             />
           </div>
+
+          <div className='flex items-center justify-end mb-4'> 
+            <Link
+              href="/auth/forgot-password"
+              className="text-sm text-muted-foreground hover:text-primary">
+              Forgot password?
+            </Link>
+          </div>
+
 
           {/* Error Message */}
           {error && (
