@@ -1,23 +1,22 @@
-'use client'
+"use client";
 
-import { useEffect, useState } from 'react'
-import Link from 'next/link'
-import { useRouter, usePathname } from 'next/navigation'
-import { getCurrentUser, getUserProfile, signOut } from '@/lib/auth'
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useRouter, usePathname } from "next/navigation";
+import { getCurrentUser, getUserProfile, signOut } from "@/lib/auth";
 
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Separator } from '@/components/ui/separator'
-import { Input } from '@/components/ui/input'
-
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Separator } from "@/components/ui/separator";
+import { Input } from "@/components/ui/input";
 
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+} from "@/components/ui/dropdown-menu";
 
 import {
   Sheet,
@@ -25,96 +24,133 @@ import {
   SheetHeader,
   SheetTitle,
   SheetTrigger,
-} from '@/components/ui/sheet'
+} from "@/components/ui/sheet";
 
-import { Menu, LayoutDashboard, UserRoundPen, LogOut, ShieldUser, Pizza, Search } from 'lucide-react'
+import {
+  Menu,
+  LayoutDashboard,
+  UserRoundPen,
+  LogOut,
+  ShieldUser,
+  Pizza,
+  Search,
+  Gauge,
+} from "lucide-react";
 
 export default function Navbar() {
-  const [user, setUser] = useState(null)
-  const [profile, setProfile] = useState(null)
-  const [mobileOpen, setMobileOpen] = useState(false)
-  const [search, setSearch] = useState('')
+  const [user, setUser] = useState(null);
+  const [profile, setProfile] = useState(null);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [search, setSearch] = useState("");
 
-
-  const router = useRouter()
-  const pathname = usePathname()
+  const router = useRouter();
+  const pathname = usePathname();
 
   // ✅ compute this early, but DON'T return yet (hooks must run first)
-  const hideNavbar = pathname?.startsWith('/auth/')
+  const hideNavbar = pathname?.startsWith("/auth/");
 
   useEffect(() => {
     // ✅ if navbar is hidden, don't do auth/profile loading
-    if (hideNavbar) return
-
-    loadUser()
+    if (hideNavbar) return;
+    loadUser();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hideNavbar, pathname])
+  }, [hideNavbar, pathname]);
 
   async function loadUser() {
-    const { user: currentUser } = await getCurrentUser()
+    const { user: currentUser } = await getCurrentUser();
 
     if (currentUser) {
-      setUser(currentUser)
-      const { data: userProfile } = await getUserProfile(currentUser.id)
-      setProfile(userProfile)
+      setUser(currentUser);
+      const { data: userProfile } = await getUserProfile(currentUser.id);
+      setProfile(userProfile);
     } else {
-      setUser(null)
-      setProfile(null)
+      setUser(null);
+      setProfile(null);
     }
   }
 
-    const handleSearch = (e) => {
-    if (e.key === 'Enter') {
-      if (!search.trim()) return
-      router.push(`/?q=${encodeURIComponent(search)}`)
-      }
+  const handleSearch = (e) => {
+    if (e.key === "Enter") {
+      if (!search.trim()) return;
+      router.push(`/?q=${encodeURIComponent(search)}`);
+      setMobileOpen(false);
     }
-
+  };
 
   const handleLogout = async () => {
-    await signOut()
-    setUser(null)
-    setProfile(null)
-    router.push('/')
-  }
+    await signOut();
+    setUser(null);
+    setProfile(null);
+    setMobileOpen(false);
+    router.push("/");
+  };
 
   const getInitials = () => {
     if (profile?.full_name) {
       return profile.full_name
-        .split(' ')
+        .split(" ")
         .map((n) => n[0])
-        .join('')
+        .join("")
         .toUpperCase()
-        .slice(0, 2)
+        .slice(0, 2);
     }
-    return user?.email?.[0]?.toUpperCase() || 'U'
-  }
+    return user?.email?.[0]?.toUpperCase() || "U";
+  };
 
   const getDashboardLink = () => {
-    if (profile?.role === 'admin') return '/dashboard/admin'
-    if (profile?.role === 'owner') return '/dashboard/owner'
-    return '/dashboard/customer'
-  }
+    if (profile?.role === "admin") return "/dashboard/admin";
+    if (profile?.role === "owner") return "/dashboard/owner";
+    return "/dashboard/customer";
+  };
 
   // ✅ safe to return AFTER hooks
-  if (hideNavbar) return null
+  if (hideNavbar) return null;
+
+  // active helper for mobile list highlighting
+  const isActive = (href) => {
+    if (!pathname) return false;
+    if (href === "/") return pathname === "/";
+    return pathname === href || pathname.startsWith(href + "/");
+  };
+
+  const mobileLinkClass = (active = false) =>
+    `flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition-colors ${
+      active ? "bg-primary/10 text-primary" : "hover:bg-accent"
+    }`;
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 gap-6">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-          <span className="text-3xl"><Pizza size={36} color="#00c951" strokeWidth={2.5} /></span>
-          <span className="text-2xl font-bold text-primary">
-            ScanEat
+        <Link
+          href="/"
+          className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+        >
+          <span className="text-3xl">
+            <Pizza size={36} color="#00c951" strokeWidth={2.5} />
           </span>
+          <span className="text-2xl font-bold text-primary">ScanEat</span>
         </Link>
 
-        {/* Desktop Nav (shadcn NavigationMenu) */}
+        {/* Desktop Nav */}
         <div className="hidden md:flex justify-between items-center gap-6">
           <div className="flex items-center gap-6">
-          <p><Link href="/#how-it-works" className='text-md font-semibold hover:text-primary transition-colors'>How It Works</Link></p>
-          <p><Link href="/restaurants" className='text-md font-semibold hover:text-primary transition-colors'>Restaurants</Link></p>
+            <p>
+              <Link
+                href="/#how-it-works"
+                className="text-md font-semibold hover:text-primary transition-colors"
+              >
+                How It Works
+              </Link>
+            </p>
+            <p>
+              <Link
+                href="/restaurants"
+                className="text-md font-semibold hover:text-primary transition-colors"
+              >
+                Restaurants
+              </Link>
+            </p>
           </div>
         </div>
 
@@ -131,8 +167,13 @@ export default function Navbar() {
                   </Avatar>
 
                   <div className="flex flex-col items-start leading-tight">
-                    <span className="text-sm font-medium">{profile.full_name || 'User'}</span>
-                    <Badge variant="secondary" className="text-white text-xs h-4 px-1 bg-primary pb-1">
+                    <span className="text-sm font-medium">
+                      {profile.full_name || "User"}
+                    </span>
+                    <Badge
+                      variant="secondary"
+                      className="text-white text-xs h-4 px-1 bg-primary pb-1"
+                    >
                       {profile.role}
                     </Badge>
                   </div>
@@ -149,9 +190,12 @@ export default function Navbar() {
                   </Link>
                 </DropdownMenuItem>
 
-                {profile.role === 'customer' && (
+                {profile.role === "customer" && (
                   <DropdownMenuItem asChild>
-                    <Link href="/dashboard/request-restaurant" className="cursor-pointer">
+                    <Link
+                      href="/dashboard/request-restaurant"
+                      className="cursor-pointer"
+                    >
                       <span className="mr-1">
                         <ShieldUser color="#00c951" size={20} />
                       </span>
@@ -161,7 +205,10 @@ export default function Navbar() {
                 )}
 
                 <DropdownMenuItem asChild>
-                  <Link href="/dashboard/customer/edit-profile" className="cursor-pointer">
+                  <Link
+                    href="/dashboard/customer/edit-profile"
+                    className="cursor-pointer"
+                  >
                     <span className="mr-1">
                       <UserRoundPen color="#00c951" size={20} />
                     </span>
@@ -169,7 +216,10 @@ export default function Navbar() {
                   </Link>
                 </DropdownMenuItem>
 
-                <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
+                <DropdownMenuItem
+                  onClick={handleLogout}
+                  className="cursor-pointer"
+                >
                   <span className="mr-2">
                     <LogOut color="#00c951" size={20} />
                   </span>
@@ -184,115 +234,177 @@ export default function Navbar() {
           )}
         </div>
 
-        {/* Mobile (shadcn Sheet) */}
+        {/* Mobile */}
         <div className="md:hidden">
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" aria-label="Open menu">
-                <Menu className="h-5 w-5" />
+                <Menu className="!h-6 !w-6" color="#00c951" />
               </Button>
             </SheetTrigger>
 
-            <SheetContent side="right" className="w-[320px] sm:w-[380px]">
-              <SheetHeader>
-                <SheetTitle className="flex items-center gap-2">
-                  <span className="text-2xl">🍕</span>
-                  <span className="font-bold">QR Menu</span>
-                </SheetTitle>
-              </SheetHeader>
+            {/* ✅ IMPORTANT: SheetContent must stay INSIDE Sheet */}
+            <SheetContent
+              side="right"
+              className="w-[320px] sm:w-[380px] p-0 flex flex-col"
+            >
+              {/* Top Header (delivery app style) */}
+              <div className="px-4 pt-4">
+                <SheetHeader className="space-y-0">
+                  <SheetTitle className="flex items-center gap-2">
+                    <span className="text-2xl">
+                      <Pizza size={32} color="#00c951" />
+                    </span>
+                    <div className="leading-tight">
+                      <p className="font-bold text-base ">ScanEat</p>
+                      <p className="text-xs text-muted-foreground">QR Menu</p>
+                    </div>
+                  </SheetTitle>
+                </SheetHeader>
 
-              <div className="mt-6 space-y-2">
-                <Link
-                  href="/#how-it-works"
-                  onClick={() => setMobileOpen(false)}
-                  className="block rounded-md px-3 py-2 text-sm font-medium hover:bg-accent"
-                >
-                  How It Works
-                </Link>
+                {/* Search */}
+                <div className="mt-3">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      onKeyDown={handleSearch}
+                      placeholder="Search restaurants or food…"
+                      className="pl-9 h-10 w-full rounded-xl"
+                    />
+                  </div>
+                </div>
+              </div>
 
-                <Link
-                  href="/#restaurants"
-                  onClick={() => setMobileOpen(false)}
-                  className="block rounded-md px-3 py-2 text-sm font-medium hover:bg-accent"
-                >
-                  Browse Restaurants
-                </Link>
-
-                <Separator className="my-4" />
-
+              {/* Scroll area */}
+              <div className="flex-1 overflow-auto px-4 pb-4">
+                {/* User card */}
                 {user && profile ? (
-                  <div className="space-y-2">
-                    <div className="rounded-lg border p-3">
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-9 w-9">
-                          <AvatarFallback className="bg-gradient-to-br from-orange-400 to-red-500 text-white">
-                            {getInitials()}
-                          </AvatarFallback>
-                        </Avatar>
+                  <div className="rounded-xl border p-4 mb-4 bg-muted/30">
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-12 w-12">
+                        <AvatarFallback className="bg-gradient-to-br from-primary to-green-500 text-white text-sm">
+                          {getInitials()}
+                        </AvatarFallback>
+                      </Avatar>
 
-                        <div className="min-w-0">
-                          <p className="text-sm font-semibold truncate">{profile.full_name || 'User'}</p>
-                          <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-semibold truncate text-sm">
+                          {profile.full_name || "User"}
+                        </p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {user.email}
+                        </p>
 
-                          <div className="mt-1">
-                            <Badge variant="secondary" className="text-xs">
-                              {profile.role}
-                            </Badge>
-                          </div>
+                        <div className="mt-2">
+                          <Badge className="bg-primary text-white text-xs rounded-full px-2 py-0.5">
+                            {profile.role}
+                          </Badge>
                         </div>
                       </div>
                     </div>
-
-                    <Link
-                      href={getDashboardLink()}
-                      onClick={() => setMobileOpen(false)}
-                      className="block rounded-md px-3 py-2 text-sm font-medium hover:bg-accent"
-                    >
-                      📊 Dashboard
-                    </Link>
-
-                    {profile.role === 'customer' && (
-                      <Link
-                        href="/dashboard/request-restaurant"
-                        onClick={() => setMobileOpen(false)}
-                        className="block rounded-md px-3 py-2 text-sm font-medium hover:bg-accent"
-                      >
-                        🏪 Request Owner Access
-                      </Link>
-                    )}
-
-                    <Link
-                      href="/dashboard/customer/edit-profile"
-                      onClick={() => setMobileOpen(false)}
-                      className="block rounded-md px-3 py-2 text-sm font-medium hover:bg-accent"
-                    >
-                      ⚙️ Edit Profile
-                    </Link>
-
-                    <Button
-                      variant="destructive"
-                      className="w-full"
-                      onClick={() => {
-                        setMobileOpen(false)
-                        handleLogout()
-                      }}
-                    >
-                      🚪 Logout
-                    </Button>
                   </div>
                 ) : (
-                    
-                  <Button asChild className="w-full bg-primary hover:bg-green-700">
-                    <Link href="/auth/login" onClick={() => setMobileOpen(false)}>
-                      Login / Sign Up
-                    </Link>
-                  </Button>
+                  <div className="rounded-2xl border p-4 mb-4 bg-muted/30">
+                    <p className="text-sm font-semibold">Welcome 👋</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Login to save favorites and access your dashboard.
+                    </p>
+
+                    <Button
+                      className="w-full mt-3 rounded-xl bg-primary hover:bg-green-700"
+                      asChild
+                    >
+                      <Link
+                        href="/auth/login"
+                        onClick={() => setMobileOpen(false)}
+                      >
+                        Login / Sign Up
+                      </Link>
+                    </Button>
+                  </div>
                 )}
+
+                {/* Links */}
+                <div className="space-y-1">
+                  {user && profile && (
+                    <>
+                      {/* <Separator className="my-3" /> */}
+
+                      <Link
+                        href={getDashboardLink()}
+                        onClick={() => setMobileOpen(false)}
+                        className={mobileLinkClass(isActive("/dashboard"))}
+                      >
+                        <LayoutDashboard className="h-5 w-5 text-primary" />
+                        Dashboard
+                      </Link>
+
+                      <Link
+                        href="/dashboard/customer/edit-profile"
+                        onClick={() => setMobileOpen(false)}
+                        className={mobileLinkClass(
+                          isActive("/dashboard/customer/edit-profile"),
+                        )}
+                      >
+                        <UserRoundPen className="h-5 w-5 text-primary" />
+                        Edit Profile
+                      </Link>
+
+                      {profile.role === "customer" && (
+                        <Link
+                          href="/dashboard/request-restaurant"
+                          onClick={() => setMobileOpen(false)}
+                          className={mobileLinkClass(
+                            isActive("/dashboard/request-restaurant"),
+                          )}
+                        >
+                          <ShieldUser className="h-5 w-5 text-primary" />
+                          Request Owner Access
+                        </Link>
+                      )}
+                    </>
+                  )}
+                  <Link
+                    href="/restaurants"
+                    onClick={() => setMobileOpen(false)}
+                    className={mobileLinkClass(isActive("/restaurants"))}
+                  >
+                    <Pizza className="h-5 w-5 text-primary" />
+                    Restaurants
+                  </Link>
+
+                  <Link
+                    href="/#how-it-works"
+                    onClick={() => setMobileOpen(false)}
+                    className={mobileLinkClass(false)}
+                  >
+                    <span className="text-lg">
+                      <Gauge color="#00c951" size={20} />
+                    </span>
+                    How It Works
+                  </Link>
+                </div>
               </div>
+
+              {/* Bottom action */}
+              {user && profile && (
+                <div className="p-3 border-t mb-4">
+                  <Button
+                    variant="destructive"
+                    className="w-full rounded-xl bg-primary"
+                    onClick={handleLogout}
+                  >
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Logout
+                  </Button>
+                </div>
+              )}
             </SheetContent>
           </Sheet>
         </div>
       </div>
     </header>
-  )
+  );
 }
