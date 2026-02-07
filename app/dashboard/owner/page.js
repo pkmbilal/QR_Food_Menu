@@ -1,156 +1,166 @@
-'use client'
+"use client";
 
-import { useEffect, useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import Link from 'next/link'
-import { Pencil, Trash2, Check, X } from 'lucide-react'
-import { getCurrentUser, getUserProfile, getUserRestaurant, signOut } from '@/lib/auth'
-import { supabase } from '@/lib/supabase'
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { Pencil, Trash2, Check, X } from "lucide-react";
+import {
+  getCurrentUser,
+  getUserProfile,
+  getUserRestaurant,
+  signOut,
+} from "@/lib/auth";
+import { supabase } from "@/lib/supabase";
 
 export default function OwnerDashboard() {
-  const [user, setUser] = useState(null)
-  const [profile, setProfile] = useState(null)
-  const [restaurant, setRestaurant] = useState(null)
+  const [user, setUser] = useState(null);
+  const [profile, setProfile] = useState(null);
+  const [restaurant, setRestaurant] = useState(null);
 
-  const [menuItems, setMenuItems] = useState([])
-  const [categories, setCategories] = useState([])
+  const [menuItems, setMenuItems] = useState([]);
+  const [categories, setCategories] = useState([]);
 
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(true);
 
-  const [showAddItemForm, setShowAddItemForm] = useState(false)
-  const [showAddCategoryForm, setShowAddCategoryForm] = useState(false)
+  const [showAddItemForm, setShowAddItemForm] = useState(false);
+  const [showAddCategoryForm, setShowAddCategoryForm] = useState(false);
 
-  const router = useRouter()
+  const router = useRouter();
 
   useEffect(() => {
-    loadOwnerData()
+    loadOwnerData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, []);
 
   async function loadOwnerData() {
-    setLoading(true)
+    setLoading(true);
 
-    const { user: currentUser, error: userError } = await getCurrentUser()
+    const { user: currentUser, error: userError } = await getCurrentUser();
     if (userError || !currentUser) {
-      router.push('/auth/login')
-      return
+      router.push("/auth/login");
+      return;
     }
-    setUser(currentUser)
+    setUser(currentUser);
 
-    const { data: userProfile } = await getUserProfile(currentUser.id)
-    setProfile(userProfile)
+    const { data: userProfile } = await getUserProfile(currentUser.id);
+    setProfile(userProfile);
 
-    if (userProfile && userProfile.role !== 'owner') {
-      router.push('/dashboard')
-      return
+    if (userProfile && userProfile.role !== "owner") {
+      router.push("/dashboard");
+      return;
     }
 
-    const { data: userRestaurant, error: restaurantError } = await getUserRestaurant(currentUser.id)
+    const { data: userRestaurant, error: restaurantError } =
+      await getUserRestaurant(currentUser.id);
     if (restaurantError || !userRestaurant) {
-      setLoading(false)
-      return
+      setLoading(false);
+      return;
     }
 
-    setRestaurant(userRestaurant)
+    setRestaurant(userRestaurant);
 
-    await loadCategories(userRestaurant.id)
-    await loadMenuItems(userRestaurant.id)
+    await loadCategories(userRestaurant.id);
+    await loadMenuItems(userRestaurant.id);
 
-    setLoading(false)
+    setLoading(false);
   }
 
   async function loadMenuItems(restaurantId) {
     const { data, error } = await supabase
-      .from('menu_items')
-      .select('*')
-      .eq('restaurant_id', restaurantId)
-      .order('category_id', { ascending: true })
+      .from("menu_items")
+      .select("*")
+      .eq("restaurant_id", restaurantId)
+      .order("category_id", { ascending: true });
 
-    if (!error) setMenuItems(data || [])
+    if (!error) setMenuItems(data || []);
   }
 
   async function loadCategories(restaurantId) {
     const { data, error } = await supabase
-      .from('categories')
-      .select('*')
-      .eq('restaurant_id', restaurantId)
-      .order('name', { ascending: true })
+      .from("categories")
+      .select("*")
+      .eq("restaurant_id", restaurantId)
+      .order("name", { ascending: true });
 
-    if (!error) setCategories(data || [])
+    if (!error) setCategories(data || []);
   }
 
   const categoryMap = useMemo(() => {
-    return Object.fromEntries((categories || []).map((c) => [c.id, c.name]))
-  }, [categories])
+    return Object.fromEntries((categories || []).map((c) => [c.id, c.name]));
+  }, [categories]);
 
   const toggleAvailability = async (itemId, currentStatus) => {
     const { error } = await supabase
-      .from('menu_items')
+      .from("menu_items")
       .update({ is_available: !currentStatus })
-      .eq('id', itemId)
+      .eq("id", itemId);
 
     if (!error && restaurant?.id) {
-      loadMenuItems(restaurant.id)
+      loadMenuItems(restaurant.id);
     }
-  }
+  };
 
   const deleteItem = async (itemId) => {
-    if (!confirm('Are you sure you want to delete this item?')) return
+    if (!confirm("Are you sure you want to delete this item?")) return;
 
     const { error } = await supabase
-      .from('menu_items')
+      .from("menu_items")
       .delete()
-      .eq('id', itemId)
+      .eq("id", itemId);
 
     if (!error && restaurant?.id) {
-      loadMenuItems(restaurant.id)
+      loadMenuItems(restaurant.id);
     }
-  }
+  };
 
   // Rename category
   const renameCategory = async (categoryId, newName) => {
-    const clean = newName.trim()
-    if (!clean) return { ok: false, message: 'Name cannot be empty' }
+    const clean = newName.trim();
+    if (!clean) return { ok: false, message: "Name cannot be empty" };
 
     const { error } = await supabase
-      .from('categories')
+      .from("categories")
       .update({ name: clean })
-      .eq('id', categoryId)
+      .eq("id", categoryId);
 
     if (error) {
-      const msg =
-        error.message?.toLowerCase().includes('duplicate')
-          ? 'This category already exists.'
-          : error.message
-      return { ok: false, message: msg }
+      const msg = error.message?.toLowerCase().includes("duplicate")
+        ? "This category already exists."
+        : error.message;
+      return { ok: false, message: msg };
     }
 
-    await loadCategories(restaurant.id)
-    return { ok: true }
-  }
+    await loadCategories(restaurant.id);
+    return { ok: true };
+  };
 
   // Delete category (items become Uncategorized because FK is ON DELETE SET NULL)
   const deleteCategory = async (categoryId) => {
-    if (!confirm('Delete this category? Items under it will become Uncategorized.')) return
+    if (
+      !confirm(
+        "Delete this category? Items under it will become Uncategorized.",
+      )
+    )
+      return;
 
     const { error } = await supabase
-      .from('categories')
+      .from("categories")
       .delete()
-      .eq('id', categoryId)
+      .eq("id", categoryId);
 
     if (error) {
-      alert('Failed to delete category: ' + error.message)
-      return
+      alert("Failed to delete category: " + error.message);
+      return;
     }
 
-    await loadCategories(restaurant.id)
-    await loadMenuItems(restaurant.id)
-  }
+    await loadCategories(restaurant.id);
+    await loadMenuItems(restaurant.id);
+  };
 
   const handleLogout = async () => {
-    await signOut()
-    router.push('/auth/login')
-  }
+    await signOut();
+    router.push("/auth/login");
+  };
 
   if (loading) {
     return (
@@ -160,18 +170,20 @@ export default function OwnerDashboard() {
           <p className="text-gray-600">Loading...</p>
         </div>
       </div>
-    )
+    );
   }
 
   if (!restaurant) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-800 mb-4">No Restaurant Found</h1>
+          <h1 className="text-2xl font-bold text-gray-800 mb-4">
+            No Restaurant Found
+          </h1>
           <p className="text-gray-600">Please contact admin for assistance.</p>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -181,7 +193,9 @@ export default function OwnerDashboard() {
         <div className="max-w-7xl mx-auto px-4 py-6">
           <div className="md:flex justify-between items-center">
             <div className="mb-4 md:mb-0">
-              <h1 className="text-3xl font-bold text-gray-800">{restaurant.name}</h1>
+              <h1 className="text-3xl font-bold text-gray-800">
+                {restaurant.name}
+              </h1>
               <p className="text-gray-600">Owner Dashboard</p>
             </div>
 
@@ -206,13 +220,6 @@ export default function OwnerDashboard() {
               >
                 Edit Restaurant
               </Link>
-
-              <button
-                onClick={handleLogout}
-                className="bg-red-500 hover:bg-red-600 text-sm py-1 text-white px-4 md:py-2 rounded-2xl font-semibold transition-colors"
-              >
-                Logout
-              </button>
             </div>
           </div>
         </div>
@@ -224,7 +231,9 @@ export default function OwnerDashboard() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className="bg-white rounded-lg shadow p-6">
             <div className="text-gray-600 text-sm mb-1">Total Menu Items</div>
-            <div className="text-3xl font-bold text-gray-800">{menuItems.length}</div>
+            <div className="text-3xl font-bold text-gray-800">
+              {menuItems.length}
+            </div>
           </div>
           <div className="bg-white rounded-lg shadow p-6">
             <div className="text-gray-600 text-sm mb-1">Available Items</div>
@@ -242,7 +251,9 @@ export default function OwnerDashboard() {
 
         {/* Restaurant Info Card */}
         <div className="bg-white rounded-lg shadow p-6 mb-8">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">Restaurant Information</h2>
+          <h2 className="text-xl font-bold text-gray-800 mb-4">
+            Restaurant Information
+          </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <p className="text-sm text-gray-600">Name</p>
@@ -254,11 +265,11 @@ export default function OwnerDashboard() {
             </div>
             <div>
               <p className="text-sm text-gray-600">WhatsApp Number</p>
-              <p className="font-semibold">{restaurant.phone || 'Not set'}</p>
+              <p className="font-semibold">{restaurant.phone || "Not set"}</p>
             </div>
             <div>
               <p className="text-sm text-gray-600">Address</p>
-              <p className="font-semibold">{restaurant.address || 'Not set'}</p>
+              <p className="font-semibold">{restaurant.address || "Not set"}</p>
             </div>
           </div>
         </div>
@@ -269,17 +280,19 @@ export default function OwnerDashboard() {
             <h2 className="text-xl font-bold text-gray-800">Categories</h2>
             <button
               onClick={() => {
-                setShowAddCategoryForm((s) => !s)
-                if (!showAddCategoryForm) setShowAddItemForm(false)
+                setShowAddCategoryForm((s) => !s);
+                if (!showAddCategoryForm) setShowAddItemForm(false);
               }}
-              className="bg-gray-800 hover:bg-gray-900 text-white px-4 py-2 rounded-lg font-semibold transition-colors"
+              className="bg-gray-800 hover:bg-gray-900 text-white px-4 py-2 rounded-lg font-semibold transition-colors cursor-pointer"
             >
-              {showAddCategoryForm ? '✕ Close' : '+ Add Category'}
+              {showAddCategoryForm ? "✕ Close" : "+ Add Category"}
             </button>
           </div>
 
           {categories.length === 0 ? (
-            <p className="text-gray-500">No categories yet. Add your first category.</p>
+            <p className="text-gray-500">
+              No categories yet. Add your first category.
+            </p>
           ) : (
             <div className="flex flex-wrap gap-2">
               {categories.map((c) => (
@@ -298,8 +311,8 @@ export default function OwnerDashboard() {
           <AddCategoryForm
             restaurantId={restaurant.id}
             onSuccess={async () => {
-              setShowAddCategoryForm(false)
-              await loadCategories(restaurant.id)
+              setShowAddCategoryForm(false);
+              await loadCategories(restaurant.id);
             }}
             onCancel={() => setShowAddCategoryForm(false)}
           />
@@ -309,12 +322,12 @@ export default function OwnerDashboard() {
         <div className="mb-6 flex gap-3">
           <button
             onClick={() => {
-              setShowAddItemForm((s) => !s)
-              if (!showAddItemForm) setShowAddCategoryForm(false)
+              setShowAddItemForm((s) => !s);
+              if (!showAddItemForm) setShowAddCategoryForm(false);
             }}
             className="bg-primary hover:bg-green-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors cursor-pointer"
           >
-            {showAddItemForm ? '✕ Cancel' : '+ Add New Item'}
+            {showAddItemForm ? "✕ Cancel" : "+ Add New Item"}
           </button>
         </div>
 
@@ -323,8 +336,8 @@ export default function OwnerDashboard() {
             restaurantId={restaurant.id}
             categories={categories}
             onSuccess={async () => {
-              setShowAddItemForm(false)
-              await loadMenuItems(restaurant.id)
+              setShowAddItemForm(false);
+              await loadMenuItems(restaurant.id);
             }}
             onCancel={() => setShowAddItemForm(false)}
           />
@@ -336,98 +349,121 @@ export default function OwnerDashboard() {
             <h2 className="text-2xl font-bold text-gray-800">Menu Items</h2>
           </div>
 
-          <div className="divide-y">
+          <div>
             {menuItems.length === 0 ? (
               <div className="p-8 text-center text-gray-500">
                 No menu items yet. Add your first item!
               </div>
             ) : (
-              menuItems.map((item) => (
-                <div key={item.id} className="p-6 hover:bg-gray-50 transition">
-                  <div className="flex items-center gap-6">
-                    {item.image_url && (
-                      <img
-                        src={item.image_url}
-                        alt={item.name}
-                        className="w-24 h-24 object-cover rounded-lg"
-                      />
-                    )}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-8">
+                {menuItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className="bg-white rounded-lg shadow hover:shadow-md transition p-4 border border-green-200"
+                  >
+                    <div className="flex items-center gap-4">
+                      {item.image_url && (
+                        <img
+                          src={item.image_url}
+                          alt={item.name}
+                          className="w-20 h-20 object-cover rounded-lg flex-shrink-0"
+                        />
+                      )}
 
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-xl font-bold text-gray-800">{item.name}</h3>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-2 flex-wrap">
+                          <h3 className="text-lg font-bold text-gray-800 truncate">
+                            {item.name}
+                          </h3>
 
-                        <span className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded-full">
-                          {categoryMap[item.category_id] || 'Uncategorized'}
-                        </span>
-
-                        {!item.is_available && (
-                          <span className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full">
-                            Unavailable
+                          <span className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded-full">
+                            {categoryMap[item.category_id] || "Uncategorized"}
                           </span>
-                        )}
+
+                          {!item.is_available && (
+                            <span className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full">
+                              Unavailable
+                            </span>
+                          )}
+                        </div>
+
+                        <p className="text-gray-600 text-sm mb-2 line-clamp-2">
+                          {item.description}
+                        </p>
+
+                        <p className="text-xl font-bold text-primary whitespace-nowrap">
+                          SAR {item.price}
+                        </p>
                       </div>
 
-                      <p className="text-gray-600 text-sm mb-2">{item.description}</p>
-                      <p className="text-2xl font-bold text-orange-600">${item.price}</p>
-                    </div>
+                      <div className="flex flex-col gap-2">
+                        <Link
+                          href={`/dashboard/owner/menu/${item.id}/edit`}
+                          className="px-3 py-2 bg-primary text-white rounded-lg font-semibold text-sm hover:bg-green-600 transition-colors cursor-pointer text-center"
+                        >
+                          Edit
+                        </Link>
 
-                    <div className="flex flex-col gap-2">
-                      <button
-                        onClick={() => toggleAvailability(item.id, item.is_available)}
-                        className={`px-4 py-2 rounded-lg font-semibold text-sm transition-colors ${
-                          item.is_available
-                            ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
-                            : 'bg-green-100 text-green-700 hover:bg-green-200'
-                        }`}
-                      >
-                        {item.is_available ? 'Mark Unavailable' : 'Mark Available'}
-                      </button>
+                        <button
+                          onClick={() =>
+                            toggleAvailability(item.id, item.is_available)
+                          }
+                          className={`px-3 py-2 rounded-lg font-semibold text-sm transition-colors cursor-pointer ${
+                            item.is_available
+                              ? "bg-yellow-100 text-yellow-700 hover:bg-yellow-200"
+                              : "bg-green-100 text-green-700 hover:bg-green-200"
+                          }`}
+                        >
+                          {item.is_available
+                            ? "Mark Unavailable"
+                            : "Mark Available"}
+                        </button>
 
-                      <button
-                        onClick={() => deleteItem(item.id)}
-                        className="px-4 py-2 bg-red-100 text-red-700 rounded-lg font-semibold text-sm hover:bg-red-200 transition-colors"
-                      >
-                        Delete
-                      </button>
+                        <button
+                          onClick={() => deleteItem(item.id)}
+                          className="px-3 py-2 bg-red-100 text-red-700 rounded-lg font-semibold text-sm hover:bg-red-200 transition-colors cursor-pointer"
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))
+                ))}
+              </div>
             )}
           </div>
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 /* ---------------- Category Chip (Lucide icons) ---------------- */
 function CategoryChip({ category, onRename, onDelete }) {
-  const [editing, setEditing] = useState(false)
-  const [name, setName] = useState(category.name)
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState('')
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(category.name);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    setName(category.name)
-  }, [category.name])
+    setName(category.name);
+  }, [category.name]);
 
   const save = async () => {
-    setError('')
-    setSaving(true)
+    setError("");
+    setSaving(true);
 
-    const res = await onRename(category.id, name)
+    const res = await onRename(category.id, name);
 
-    setSaving(false)
+    setSaving(false);
 
     if (!res?.ok) {
-      setError(res?.message || 'Failed to rename')
-      return
+      setError(res?.message || "Failed to rename");
+      return;
     }
 
-    setEditing(false)
-  }
+    setEditing(false);
+  };
 
   return (
     <div className="flex items-center gap-2 bg-gray-100 px-3 py-1 rounded-full">
@@ -438,7 +474,7 @@ function CategoryChip({ category, onRename, onDelete }) {
           <button
             type="button"
             onClick={() => setEditing(true)}
-            className="p-1 rounded-full text-gray-600 hover:text-gray-900 hover:bg-white/70 transition"
+            className="p-1 rounded-full text-gray-600 hover:text-gray-900 hover:bg-white/70 transition cursor-pointer"
             title="Rename"
           >
             <Pencil className="h-4 w-4" />
@@ -447,7 +483,7 @@ function CategoryChip({ category, onRename, onDelete }) {
           <button
             type="button"
             onClick={onDelete}
-            className="p-1 rounded-full text-red-600 hover:text-red-800 hover:bg-white/70 transition"
+            className="p-1 rounded-full text-red-600 hover:text-red-800 hover:bg-white/70 transition cursor-pointer"
             title="Delete"
           >
             <Trash2 className="h-4 w-4" />
@@ -475,9 +511,9 @@ function CategoryChip({ category, onRename, onDelete }) {
           <button
             type="button"
             onClick={() => {
-              setEditing(false)
-              setName(category.name)
-              setError('')
+              setEditing(false);
+              setName(category.name);
+              setError("");
             }}
             className="p-1 rounded-full text-gray-600 hover:text-gray-900 hover:bg-white/70 transition"
             title="Cancel"
@@ -489,40 +525,39 @@ function CategoryChip({ category, onRename, onDelete }) {
 
       {error && <span className="text-xs text-red-600 ml-1">{error}</span>}
     </div>
-  )
+  );
 }
 
 /* ---------------- Add Category Form ---------------- */
 function AddCategoryForm({ restaurantId, onSuccess, onCancel }) {
-  const [name, setName] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  const [name, setName] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    setError('')
-    setLoading(true)
+    e.preventDefault();
+    setError("");
+    setLoading(true);
 
-    const cleanName = name.trim()
+    const cleanName = name.trim();
 
     const { error: dbError } = await supabase
-      .from('categories')
-      .insert([{ restaurant_id: restaurantId, name: cleanName }])
+      .from("categories")
+      .insert([{ restaurant_id: restaurantId, name: cleanName }]);
 
     if (dbError) {
-      const msg =
-        dbError.message?.toLowerCase().includes('duplicate')
-          ? 'This category already exists.'
-          : dbError.message
-      setError('Failed to add category: ' + msg)
-      setLoading(false)
-      return
+      const msg = dbError.message?.toLowerCase().includes("duplicate")
+        ? "This category already exists."
+        : dbError.message;
+      setError("Failed to add category: " + msg);
+      setLoading(false);
+      return;
     }
 
-    setLoading(false)
-    setName('')
-    onSuccess?.()
-  }
+    setLoading(false);
+    setName("");
+    onSuccess?.();
+  };
 
   return (
     <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
@@ -555,7 +590,7 @@ function AddCategoryForm({ restaurantId, onSuccess, onCancel }) {
             disabled={loading}
             className="flex-1 bg-primary hover:bg-green-600 text-white py-3 rounded-lg font-semibold disabled:bg-gray-400 transition-colors"
           >
-            {loading ? 'Adding...' : 'Add Category'}
+            {loading ? "Adding..." : "Add Category"}
           </button>
 
           <button
@@ -568,29 +603,29 @@ function AddCategoryForm({ restaurantId, onSuccess, onCancel }) {
         </div>
       </form>
     </div>
-  )
+  );
 }
 
 /* ---------------- Add Item Form ---------------- */
 function AddItemForm({ restaurantId, categories, onSuccess, onCancel }) {
   const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    price: '',
-    category_id: '',
-    image_url: '',
+    name: "",
+    description: "",
+    price: "",
+    category_id: "",
+    image_url: "",
     is_available: true,
-  })
+  });
 
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    setError('')
-    setLoading(true)
+    e.preventDefault();
+    setError("");
+    setLoading(true);
 
-    const { error: dbError } = await supabase.from('menu_items').insert([
+    const { error: dbError } = await supabase.from("menu_items").insert([
       {
         restaurant_id: restaurantId,
         name: formData.name,
@@ -600,17 +635,17 @@ function AddItemForm({ restaurantId, categories, onSuccess, onCancel }) {
         image_url: formData.image_url,
         is_available: formData.is_available,
       },
-    ])
+    ]);
 
     if (dbError) {
-      setError('Failed to add item: ' + dbError.message)
-      setLoading(false)
-      return
+      setError("Failed to add item: " + dbError.message);
+      setLoading(false);
+      return;
     }
 
-    setLoading(false)
-    onSuccess?.()
-  }
+    setLoading(false);
+    onSuccess?.();
+  };
 
   return (
     <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
@@ -637,7 +672,9 @@ function AddItemForm({ restaurantId, categories, onSuccess, onCancel }) {
           </label>
           <textarea
             value={formData.description}
-            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, description: e.target.value })
+            }
             placeholder="Describe your dish..."
             rows="3"
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
@@ -654,7 +691,9 @@ function AddItemForm({ restaurantId, categories, onSuccess, onCancel }) {
               type="number"
               step="0.01"
               value={formData.price}
-              onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, price: e.target.value })
+              }
               placeholder="12.99"
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
               required
@@ -667,7 +706,9 @@ function AddItemForm({ restaurantId, categories, onSuccess, onCancel }) {
             </label>
             <select
               value={formData.category_id}
-              onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, category_id: e.target.value })
+              }
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
               required
             >
@@ -696,7 +737,9 @@ function AddItemForm({ restaurantId, categories, onSuccess, onCancel }) {
           <input
             type="url"
             value={formData.image_url}
-            onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, image_url: e.target.value })
+            }
             placeholder="https://images.unsplash.com/..."
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
           />
@@ -710,10 +753,15 @@ function AddItemForm({ restaurantId, categories, onSuccess, onCancel }) {
             type="checkbox"
             id="is_available"
             checked={formData.is_available}
-            onChange={(e) => setFormData({ ...formData, is_available: e.target.checked })}
+            onChange={(e) =>
+              setFormData({ ...formData, is_available: e.target.checked })
+            }
             className="w-5 h-5"
           />
-          <label htmlFor="is_available" className="text-sm font-semibold text-gray-700">
+          <label
+            htmlFor="is_available"
+            className="text-sm font-semibold text-gray-700"
+          >
             Available for ordering
           </label>
         </div>
@@ -730,7 +778,7 @@ function AddItemForm({ restaurantId, categories, onSuccess, onCancel }) {
             disabled={loading || categories.length === 0}
             className="flex-1 bg-primary hover:bg-green-600 text-white py-3 rounded-lg font-semibold disabled:bg-gray-400 transition-colors"
           >
-            {loading ? 'Adding...' : 'Add Item'}
+            {loading ? "Adding..." : "Add Item"}
           </button>
 
           <button
@@ -743,5 +791,5 @@ function AddItemForm({ restaurantId, categories, onSuccess, onCancel }) {
         </div>
       </form>
     </div>
-  )
+  );
 }

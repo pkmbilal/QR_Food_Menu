@@ -1,112 +1,131 @@
-'use client'
+"use client";
 
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import Link from 'next/link'
-import { getCurrentUser, getUserProfile, submitRestaurantRequest, getUserRequests } from '@/lib/auth'
+import { supabase } from "@/lib/supabase";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import {
+  getCurrentUser,
+  getUserProfile,
+  submitRestaurantRequest,
+  getUserRequests,
+} from "@/lib/auth";
 
 export default function RequestRestaurantPage() {
-  const [user, setUser] = useState(null)
-  const [profile, setProfile] = useState(null)
-  const [existingRequests, setExistingRequests] = useState([])
+  const [user, setUser] = useState(null);
+  const [profile, setProfile] = useState(null);
+  const [existingRequests, setExistingRequests] = useState([]);
   const [formData, setFormData] = useState({
-    restaurantName: '',
-    imageURL: '',
-    phone: '',
-    address: '',
-    description: ''
-  })
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState(false)
-  const [loading, setLoading] = useState(true)
-  const [submitting, setSubmitting] = useState(false)
-  const router = useRouter()
+    restaurantName: "",
+    city_id: "",
+    phone: "",
+    address: "",
+    description: "",
+  });
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [cities, setCities] = useState([]);
+
+  const router = useRouter();
 
   useEffect(() => {
     async function loadData() {
       // Get current user
-      const { user: currentUser, error: userError } = await getCurrentUser()
+      const { user: currentUser, error: userError } = await getCurrentUser();
 
       if (userError || !currentUser) {
-        router.push('/auth/login')
-        return
+        router.push("/auth/login");
+        return;
       }
 
-      setUser(currentUser)
+      setUser(currentUser);
 
       // Get profile
-      const { data: userProfile } = await getUserProfile(currentUser.id)
-      setProfile(userProfile)
+      const { data: userProfile } = await getUserProfile(currentUser.id);
+      setProfile(userProfile);
 
       // If already owner or admin, redirect
-      if (userProfile && userProfile.role !== 'customer') {
-        router.push('/dashboard')
-        return
+      if (userProfile && userProfile.role !== "customer") {
+        router.push("/dashboard");
+        return;
       }
 
-      // Get existing requests
-      const { data: requests } = await getUserRequests(currentUser.id)
-      setExistingRequests(requests || [])
+      // Get existing cities for dropdown
+      const { data: citiesData, error: citiesError } = await supabase
+        .from("cities")
+        .select("id, name")
+        .eq("is_active", true)
+        .order("name", { ascending: true });
 
-      setLoading(false)
+      if (!citiesError) setCities(citiesData || []);
+
+      // Get existing requests
+      const { data: requests } = await getUserRequests(currentUser.id);
+      setExistingRequests(requests || []);
+
+      setLoading(false);
     }
 
-    loadData()
-  }, [router])
+    loadData();
+  }, [router]);
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    setError('')
-    setSubmitting(true)
+    e.preventDefault();
+    setError("");
+    setSubmitting(true);
 
     // Validate phone number
     if (formData.phone.length < 10) {
-      setError('Please enter a valid phone number')
-      setSubmitting(false)
-      return
+      setError("Please enter a valid phone number");
+      setSubmitting(false);
+      return;
     }
 
     try {
-      const { data, error: submitError } = await submitRestaurantRequest(user.id, {
-        name: formData.restaurantName,
-        image_url: formData.imageURL,
-        phone: formData.phone,
-        address: formData.address,
-        description: formData.description
-      })
+      const { data, error: submitError } = await submitRestaurantRequest(
+        user.id,
+        {
+          name: formData.restaurantName,
+          city_id: formData.city_id,
+          phone: formData.phone,
+          address: formData.address,
+          description: formData.description,
+        },
+      );
 
       if (submitError) {
-        setError(submitError.message)
-        setSubmitting(false)
-        return
+        setError(submitError.message);
+        setSubmitting(false);
+        return;
       }
 
       // Success!
-      setSuccess(true)
+      setSuccess(true);
       setFormData({
-        restaurantName: '',
-        imageURL: '',
-        phone: '',
-        address: '',
-        description: ''
-      })
+        restaurantName: "",
+        city_id: "",
+        phone: "",
+        address: "",
+        description: "",
+      });
 
       // Refresh requests list
-      const { data: requests } = await getUserRequests(user.id)
-      setExistingRequests(requests || [])
+      const { data: requests } = await getUserRequests(user.id);
+      setExistingRequests(requests || []);
 
-      setSubmitting(false)
+      setSubmitting(false);
 
       // Show success message for 3 seconds then redirect
       setTimeout(() => {
-        router.push('/dashboard/customer')
-      }, 3000)
-
+        router.push("/dashboard/customer");
+      }, 3000);
     } catch (err) {
-      setError('Something went wrong: ' + err.message)
-      setSubmitting(false)
+      setError("Something went wrong: " + err.message);
+      setSubmitting(false);
     }
-  }
+  };
 
   if (loading) {
     return (
@@ -116,11 +135,13 @@ export default function RequestRestaurantPage() {
           <p className="text-gray-600">Loading...</p>
         </div>
       </div>
-    )
+    );
   }
 
   // Check if user has pending request
-  const hasPendingRequest = existingRequests.some(req => req.status === 'pending')
+  const hasPendingRequest = existingRequests.some(
+    (req) => req.status === "pending",
+  );
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -133,18 +154,23 @@ export default function RequestRestaurantPage() {
           >
             ← Back to Dashboard
           </Link>
-          <h1 className="text-4xl font-bold text-gray-800 mb-2">Request to Become Owner</h1>
+          <h1 className="text-4xl font-bold text-gray-800 mb-2">
+            Request to Become Owner
+          </h1>
           <p className="text-gray-600">
-            Fill out the form below to request access to manage a restaurant on our platform.
+            Fill out the form below to request access to manage a restaurant on
+            our platform.
           </p>
         </div>
 
         {/* Success Message */}
         {success && (
           <div className="bg-green-50 border border-green-200 text-green-800 px-6 py-4 rounded-lg mb-6">
-            <h3 className="font-bold mb-2">✅ Request Submitted Successfully!</h3>
+            <h3 className="font-bold mb-2">
+              ✅ Request Submitted Successfully!
+            </h3>
             <p className="text-sm">
-              Your request has been submitted and is pending admin approval. 
+              Your request has been submitted and is pending admin approval.
               You'll be notified once it's reviewed. Redirecting to dashboard...
             </p>
           </div>
@@ -155,7 +181,8 @@ export default function RequestRestaurantPage() {
           <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-6 py-4 rounded-lg mb-6">
             <h3 className="font-bold mb-2">⏳ Pending Request</h3>
             <p className="text-sm">
-              You already have a pending request. Please wait for admin approval before submitting another request.
+              You already have a pending request. Please wait for admin approval
+              before submitting another request.
             </p>
           </div>
         )}
@@ -164,7 +191,9 @@ export default function RequestRestaurantPage() {
           {/* Main Form */}
           <div className="lg:col-span-2">
             <div className="bg-white rounded-lg shadow-lg p-8">
-              <h2 className="text-2xl font-bold text-gray-800 mb-6">Restaurant Information</h2>
+              <h2 className="text-2xl font-bold text-gray-800 mb-6">
+                Restaurant Information
+              </h2>
 
               <form onSubmit={handleSubmit} className="space-y-6">
                 {/* Restaurant Name */}
@@ -175,7 +204,12 @@ export default function RequestRestaurantPage() {
                   <input
                     type="text"
                     value={formData.restaurantName}
-                    onChange={(e) => setFormData({...formData, restaurantName: e.target.value})}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        restaurantName: e.target.value,
+                      })
+                    }
                     placeholder="e.g., Pizza Palace"
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                     required
@@ -186,22 +220,34 @@ export default function RequestRestaurantPage() {
                   </p>
                 </div>
 
-                {/* Image URL */}
+                {/* City Dropdown */}
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Restaurant Image URL *
+                    City *
                   </label>
-                  <input
-                    type="text"
-                    value={formData.imageURL}
-                    onChange={(e) => setFormData({...formData, imageURL: e.target.value})}
-                    placeholder="e.g., https://images.pexels.com/photos/2750900/pexels-photo-2750900.jpeg"
+
+                  <select
+                    value={formData.city_id}
+                    onChange={(e) =>
+                      setFormData({ ...formData, city_id: e.target.value })
+                    }
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                     required
                     disabled={hasPendingRequest}
-                  />
+                  >
+                    <option value="" disabled>
+                      Select city
+                    </option>
+
+                    {cities.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+
                   <p className="text-xs text-gray-500 mt-1">
-                    Your restaurant image URL
+                    Choose the city where your restaurant is located
                   </p>
                 </div>
 
@@ -213,14 +259,17 @@ export default function RequestRestaurantPage() {
                   <input
                     type="tel"
                     value={formData.phone}
-                    onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                    onChange={(e) =>
+                      setFormData({ ...formData, phone: e.target.value })
+                    }
                     placeholder="966501234567"
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                     required
                     disabled={hasPendingRequest}
                   />
                   <p className="text-xs text-gray-500 mt-1">
-                    Include country code (e.g., 966 for Saudi Arabia). No + or spaces.
+                    Include country code (e.g., 966 for Saudi Arabia). No + or
+                    spaces.
                   </p>
                 </div>
 
@@ -232,7 +281,9 @@ export default function RequestRestaurantPage() {
                   <input
                     type="text"
                     value={formData.address}
-                    onChange={(e) => setFormData({...formData, address: e.target.value})}
+                    onChange={(e) =>
+                      setFormData({ ...formData, address: e.target.value })
+                    }
                     placeholder="123 Main Street, City, Country"
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                     required
@@ -250,7 +301,9 @@ export default function RequestRestaurantPage() {
                   </label>
                   <textarea
                     value={formData.description}
-                    onChange={(e) => setFormData({...formData, description: e.target.value})}
+                    onChange={(e) =>
+                      setFormData({ ...formData, description: e.target.value })
+                    }
                     placeholder="Tell us about your restaurant, cuisine type, why you want to join our platform..."
                     rows="4"
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
@@ -274,9 +327,11 @@ export default function RequestRestaurantPage() {
                   disabled={submitting || hasPendingRequest}
                   className="w-full bg-primary hover:bg-green-600 text-white py-3 rounded-lg font-semibold transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed cursor-pointer"
                 >
-                  {submitting ? 'Submitting Request...' : 
-                   hasPendingRequest ? 'Request Already Pending' : 
-                   'Submit Request'}
+                  {submitting
+                    ? "Submitting Request..."
+                    : hasPendingRequest
+                      ? "Request Already Pending"
+                      : "Submit Request"}
                 </button>
               </form>
             </div>
@@ -286,7 +341,9 @@ export default function RequestRestaurantPage() {
           <div className="lg:col-span-1 space-y-6">
             {/* What Happens Next */}
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-              <h3 className="font-bold text-blue-900 mb-3">📋 What Happens Next?</h3>
+              <h3 className="font-bold text-blue-900 mb-3">
+                📋 What Happens Next?
+              </h3>
               <ol className="space-y-3 text-sm text-blue-800">
                 <li className="flex gap-2">
                   <span className="font-bold">1.</span>
@@ -321,17 +378,25 @@ export default function RequestRestaurantPage() {
             {/* Your Requests */}
             {existingRequests.length > 0 && (
               <div className="bg-white border border-gray-200 rounded-lg p-6">
-                <h3 className="font-bold text-gray-900 mb-3">Your Previous Requests</h3>
+                <h3 className="font-bold text-gray-900 mb-3">
+                  Your Previous Requests
+                </h3>
                 <div className="space-y-2">
                   {existingRequests.map((req) => (
                     <div key={req.id} className="text-sm">
                       <div className="flex justify-between items-center">
-                        <span className="font-semibold">{req.restaurant_name}</span>
-                        <span className={`text-xs px-2 py-1 rounded-full ${
-                          req.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                          req.status === 'approved' ? 'bg-green-100 text-green-800' :
-                          'bg-red-100 text-red-800'
-                        }`}>
+                        <span className="font-semibold">
+                          {req.restaurant_name}
+                        </span>
+                        <span
+                          className={`text-xs px-2 py-1 rounded-full ${
+                            req.status === "pending"
+                              ? "bg-yellow-100 text-yellow-800"
+                              : req.status === "approved"
+                                ? "bg-green-100 text-green-800"
+                                : "bg-red-100 text-red-800"
+                          }`}
+                        >
                           {req.status}
                         </span>
                       </div>
@@ -347,5 +412,5 @@ export default function RequestRestaurantPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }

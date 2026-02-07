@@ -46,7 +46,7 @@ export default function MenuItem({ item, restaurant, categoryMap = {} }) {
           <span className="text-xl font-bold text-primary">SAR {item.price}</span>
 
           <button
-            className="bg-primary hover:bg-green-600 text-white px-3 py-2 rounded-lg transition-colors cursor-pointer"
+            className="bg-primary hover:bg-green-600 text-white font-bold px-3 py-2 rounded-lg transition-colors cursor-pointer"
             onClick={handleAddToCart}
           >
             Add to Cart

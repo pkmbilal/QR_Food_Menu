@@ -12,11 +12,15 @@ export default function EditRestaurantPage() {
   const [loading, setLoading] = useState(true)
   const [restaurant, setRestaurant] = useState(null)
 
+  // ✅ Cities list
+  const [cities, setCities] = useState([])
+
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
     address: '',
     image_url: '',
+    city_id: '', // ✅ NEW
     is_active: true,
   })
 
@@ -28,6 +32,22 @@ export default function EditRestaurantPage() {
     loadData()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  async function loadCities() {
+    const { data, error } = await supabase
+      .from('cities')
+      .select('id, name')
+      .eq('is_active', true)
+      .order('name', { ascending: true })
+
+    if (error) {
+      console.error('Error loading cities:', error)
+      setCities([])
+      return
+    }
+
+    setCities(data || [])
+  }
 
   async function loadData() {
     setLoading(true)
@@ -44,6 +64,9 @@ export default function EditRestaurantPage() {
       return
     }
 
+    // ✅ load cities + restaurant
+    await loadCities()
+
     const { data: userRestaurant, error: restaurantError } = await getUserRestaurant(currentUser.id)
     if (restaurantError || !userRestaurant) {
       setError('No restaurant found for this owner. Please contact admin.')
@@ -57,6 +80,7 @@ export default function EditRestaurantPage() {
       phone: userRestaurant.phone || '',
       address: userRestaurant.address || '',
       image_url: userRestaurant.image_url || '',
+      city_id: userRestaurant.city_id || '', // ✅ NEW
       is_active: userRestaurant.is_active ?? true,
     })
 
@@ -76,6 +100,7 @@ export default function EditRestaurantPage() {
       phone: formData.phone.trim(),
       address: formData.address.trim(),
       image_url: formData.image_url.trim(),
+      city_id: formData.city_id || null, // ✅ NEW
       is_active: formData.is_active,
     }
 
@@ -144,6 +169,34 @@ export default function EditRestaurantPage() {
               />
             </div>
 
+            {/* ✅ City dropdown */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                City *
+              </label>
+              <select
+                value={formData.city_id}
+                onChange={(e) => setFormData({ ...formData, city_id: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white"
+                required
+              >
+                <option value="" disabled>
+                  Select city
+                </option>
+                {cities.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+
+              {cities.length === 0 && (
+                <p className="text-xs text-gray-500 mt-1">
+                  No active cities found. Ask admin to add cities.
+                </p>
+              )}
+            </div>
+
             {/* Phone */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -153,7 +206,7 @@ export default function EditRestaurantPage() {
                 type="text"
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                placeholder="+966..."
+                placeholder="966501234567"
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
               />
             </div>
@@ -227,7 +280,7 @@ export default function EditRestaurantPage() {
             <div className="flex gap-4 pt-4">
               <button
                 type="submit"
-                disabled={saving}
+                disabled={saving || cities.length === 0}
                 className="flex-1 bg-primary hover:bg-green-600 text-white py-3 rounded-lg font-semibold disabled:bg-gray-400 transition-colors"
               >
                 {saving ? 'Saving...' : 'Save Changes'}
