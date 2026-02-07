@@ -106,7 +106,7 @@ export default function EditProfilePage() {
         <div className="mb-8">
           <Link
             href="/dashboard/customer"
-            className="text-orange-600 hover:text-orange-700 font-semibold mb-4 inline-block"
+            className="text-primary hover:text-green-600 font-semibold mb-4 inline-block"
           >
             ← Back to Dashboard
           </Link>
@@ -151,7 +151,7 @@ export default function EditProfilePage() {
                 value={formData.full_name}
                 onChange={(e) => setFormData({...formData, full_name: e.target.value})}
                 placeholder="Enter your full name"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
               />
             </div>
 
@@ -165,7 +165,7 @@ export default function EditProfilePage() {
                 value={formData.phone}
                 onChange={(e) => setFormData({...formData, phone: e.target.value})}
                 placeholder="e.g., 966501234567"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
               />
               <p className="text-xs text-gray-500 mt-1">
                 Include country code (e.g., 966 for Saudi Arabia)
@@ -205,7 +205,7 @@ export default function EditProfilePage() {
               <button
                 type="submit"
                 disabled={saving || success}
-                className="flex-1 bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-lg font-semibold transition-colors disabled:bg-gray-400"
+                className="flex-1 bg-primary hover:bg-green-600 text-white py-3 rounded-lg font-semibold transition-colors disabled:bg-gray-400"
               >
                 {saving ? 'Saving...' : success ? 'Saved!' : 'Save Changes'}
               </button>
