@@ -137,9 +137,7 @@ export default function OwnerDashboard() {
   // Delete category (items become Uncategorized because FK is ON DELETE SET NULL)
   const deleteCategory = async (categoryId) => {
     if (
-      !confirm(
-        "Delete this category? Items under it will become Uncategorized.",
-      )
+      !confirm("Delete this category? Items under it will become Uncategorized.")
     )
       return;
 
@@ -380,6 +378,17 @@ export default function OwnerDashboard() {
                             {categoryMap[item.category_id] || "Uncategorized"}
                           </span>
 
+                          {/* ✅ NEW: Veg/Non-veg pill */}
+                          <span
+                            className={`text-xs px-2 py-1 rounded-full font-semibold ${
+                              item.is_veg
+                                ? "bg-green-100 text-green-800"
+                                : "bg-red-100 text-red-800"
+                            }`}
+                          >
+                            {item.is_veg ? "🥗 Veg" : "🍗 Non-veg"}
+                          </span>
+
                           {!item.is_available && (
                             <span className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full">
                               Unavailable
@@ -432,6 +441,16 @@ export default function OwnerDashboard() {
               </div>
             )}
           </div>
+        </div>
+
+        {/* Footer action */}
+        <div className="mt-8 flex justify-end">
+          <button
+            onClick={handleLogout}
+            className="bg-gray-800 hover:bg-gray-900 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+          >
+            Logout
+          </button>
         </div>
       </div>
     </div>
@@ -606,7 +625,7 @@ function AddCategoryForm({ restaurantId, onSuccess, onCancel }) {
   );
 }
 
-/* ---------------- Add Item Form ---------------- */
+/* ---------------- Add Item Form (✅ includes is_veg) ---------------- */
 function AddItemForm({ restaurantId, categories, onSuccess, onCancel }) {
   const [formData, setFormData] = useState({
     name: "",
@@ -615,6 +634,7 @@ function AddItemForm({ restaurantId, categories, onSuccess, onCancel }) {
     category_id: "",
     image_url: "",
     is_available: true,
+    is_veg: true, // ✅ NEW
   });
 
   const [loading, setLoading] = useState(false);
@@ -625,15 +645,23 @@ function AddItemForm({ restaurantId, categories, onSuccess, onCancel }) {
     setError("");
     setLoading(true);
 
+    const priceNum = Number.parseFloat(formData.price);
+    if (Number.isNaN(priceNum)) {
+      setError("Please enter a valid price.");
+      setLoading(false);
+      return;
+    }
+
     const { error: dbError } = await supabase.from("menu_items").insert([
       {
         restaurant_id: restaurantId,
-        name: formData.name,
-        description: formData.description,
-        price: parseFloat(formData.price),
-        category_id: formData.category_id,
-        image_url: formData.image_url,
-        is_available: formData.is_available,
+        name: formData.name.trim(),
+        description: formData.description.trim(),
+        price: priceNum,
+        category_id: formData.category_id || null,
+        image_url: formData.image_url?.trim() || null,
+        is_available: !!formData.is_available,
+        is_veg: !!formData.is_veg, // ✅ NEW
       },
     ]);
 
@@ -728,6 +756,25 @@ function AddItemForm({ restaurantId, categories, onSuccess, onCancel }) {
               </p>
             )}
           </div>
+        </div>
+
+        {/* ✅ NEW: Veg toggle */}
+        <div className="flex items-center gap-3">
+          <input
+            type="checkbox"
+            id="is_veg"
+            checked={formData.is_veg}
+            onChange={(e) =>
+              setFormData({ ...formData, is_veg: e.target.checked })
+            }
+            className="w-5 h-5"
+          />
+          <label htmlFor="is_veg" className="text-sm font-semibold text-gray-700">
+            Veg item
+          </label>
+          <span className="text-xs text-gray-500">
+            {formData.is_veg ? "🥗 Veg" : "🍗 Non-veg"}
+          </span>
         </div>
 
         <div>

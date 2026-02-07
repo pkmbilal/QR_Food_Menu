@@ -26,6 +26,10 @@ export default function EditRestaurantPage() {
     image_url: '',
     city_id: '',
     is_active: true,
+
+    // ✅ NEW (matches your schema)
+    delivery_available: false,
+    pickup_available: true,
   })
 
   const [saving, setSaving] = useState(false)
@@ -102,9 +106,7 @@ export default function EditRestaurantPage() {
     // ✅ load cities + cuisines first (for dropdowns)
     await Promise.all([loadCities(), loadCuisines()])
 
-    const { data: userRestaurant, error: restaurantError } = await getUserRestaurant(
-      currentUser.id,
-    )
+    const { data: userRestaurant, error: restaurantError } = await getUserRestaurant(currentUser.id)
     if (restaurantError || !userRestaurant) {
       setError('No restaurant found for this owner. Please contact admin.')
       setLoading(false)
@@ -112,6 +114,7 @@ export default function EditRestaurantPage() {
     }
 
     setRestaurant(userRestaurant)
+
     setFormData({
       name: userRestaurant.name || '',
       phone: userRestaurant.phone || '',
@@ -119,6 +122,10 @@ export default function EditRestaurantPage() {
       image_url: userRestaurant.image_url || '',
       city_id: userRestaurant.city_id || '',
       is_active: userRestaurant.is_active ?? true,
+
+      // ✅ map from your DB columns
+      delivery_available: userRestaurant.delivery_available ?? false,
+      pickup_available: userRestaurant.pickup_available ?? true,
     })
 
     // ✅ load selected cuisines for this restaurant
@@ -135,6 +142,13 @@ export default function EditRestaurantPage() {
     setError('')
     setSuccess('')
 
+    // Optional: at least one option must be enabled
+    if (!formData.delivery_available && !formData.pickup_available) {
+      setError('Please enable at least Delivery or Pickup.')
+      setSaving(false)
+      return
+    }
+
     const payload = {
       name: formData.name.trim(),
       phone: formData.phone.trim(),
@@ -142,14 +156,16 @@ export default function EditRestaurantPage() {
       image_url: formData.image_url.trim(),
       city_id: formData.city_id || null,
       is_active: formData.is_active,
+
+      // ✅ save to your schema fields
+      delivery_available: !!formData.delivery_available,
+      pickup_available: !!formData.pickup_available,
     }
 
-    const { data, error: dbError } = await supabase
+    const { error: dbError } = await supabase
       .from('restaurants')
       .update(payload)
       .eq('id', restaurant.id)
-      .select()
-      .single()
 
     if (dbError) {
       setError('Failed to update: ' + dbError.message)
@@ -262,11 +278,52 @@ export default function EditRestaurantPage() {
               )}
             </div>
 
-            {/* ✅ Cuisines multi-select */}
+            {/* ✅ Delivery / Pickup */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Cuisines
+                Service Options
               </label>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <label className="flex items-center gap-3 p-3 border rounded-xl cursor-pointer hover:bg-gray-50">
+                  <input
+                    type="checkbox"
+                    checked={formData.delivery_available}
+                    onChange={(e) =>
+                      setFormData({ ...formData, delivery_available: e.target.checked })
+                    }
+                    className="w-5 h-5"
+                  />
+                  <div>
+                    <div className="font-semibold text-gray-800">🚚 Delivery</div>
+                    <div className="text-xs text-gray-500">You can deliver to customers</div>
+                  </div>
+                </label>
+
+                <label className="flex items-center gap-3 p-3 border rounded-xl cursor-pointer hover:bg-gray-50">
+                  <input
+                    type="checkbox"
+                    checked={formData.pickup_available}
+                    onChange={(e) =>
+                      setFormData({ ...formData, pickup_available: e.target.checked })
+                    }
+                    className="w-5 h-5"
+                  />
+                  <div>
+                    <div className="font-semibold text-gray-800">🏃 Pickup</div>
+                    <div className="text-xs text-gray-500">Customers can pick up from you</div>
+                  </div>
+                </label>
+              </div>
+
+              <p className="text-xs text-gray-500 mt-2">
+                Tip: Enable at least one option.
+              </p>
+            </div>
+
+            {/* ✅ Cuisines multi-select */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Cuisines</label>
 
               <select
                 multiple
@@ -285,16 +342,13 @@ export default function EditRestaurantPage() {
               </select>
 
               {cuisines.length === 0 ? (
-                <p className="text-xs text-gray-500 mt-1">
-                  No cuisines found. Ask admin to add cuisines.
-                </p>
+                <p className="text-xs text-gray-500 mt-1">No cuisines found. Ask admin to add cuisines.</p>
               ) : (
                 <p className="text-xs text-gray-500 mt-1">
                   Tip: Hold Ctrl (Windows) / Cmd (Mac) to select multiple.
                 </p>
               )}
 
-              {/* Selected preview */}
               {selectedCuisineIds.length > 0 && cuisines.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-2">
                   {selectedCuisineIds.map((id) => {

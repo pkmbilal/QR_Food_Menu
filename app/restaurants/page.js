@@ -1,61 +1,127 @@
-import { supabase } from "@/lib/supabase";
-import RestaurantCard from "@/components/RestaurantCard";
+import { supabase } from '@/lib/supabase'
+import RestaurantCard from '@/components/RestaurantCard'
+import RestaurantsFilters from '@/components/RestaurantsFilters'
 
-export default async function RestaurantsPage() {
-  // Fetch active restaurants + join city name
-  const { data: restaurants, error } = await supabase
-    .from("restaurants")
+export default async function RestaurantsPage({ searchParams }) {
+  // ✅ Next.js 15 can pass searchParams as Promise in some setups
+  const params = await Promise.resolve(searchParams ?? {})
+
+  const type = (params?.type ?? 'restaurants').toString()
+  const q = (params?.q ?? '').toString().trim()
+  const city = (params?.city ?? '').toString()
+  const cuisine = (params?.cuisine ?? '').toString()
+  const veg = (params?.veg ?? '').toString() // '1' => pure veg only (option A)
+
+  // Load dropdowns
+  const [{ data: cities }, { data: cuisines }] = await Promise.all([
+    supabase.from('cities').select('id,name').eq('is_active', true).order('name', { ascending: true }),
+    supabase.from('cuisines').select('id,name').eq('is_active', true).order('name', { ascending: true }),
+  ])
+
+  const intersect = (a, b) => {
+    const setB = new Set(b)
+    return a.filter((x) => setB.has(x))
+  }
+
+  let constrainedRestaurantIds = null
+
+  // Cuisine filter -> restaurant ids
+  if (cuisine) {
+    const { data: rc, error: rcErr } = await supabase
+      .from('restaurant_cuisines')
+      .select('restaurant_id')
+      .eq('cuisine_id', cuisine)
+
+    constrainedRestaurantIds = rcErr ? [] : (rc || []).map((x) => x.restaurant_id)
+  }
+
+  // Food search -> restaurant ids
+  if (type === 'food' && q) {
+    const safeQ = q.replace(/,/g, ' ')
+    const { data: mi, error: miErr } = await supabase
+      .from('menu_items')
+      .select('restaurant_id')
+      .eq('is_available', true)
+      .or(`name.ilike.%${safeQ}%,description.ilike.%${safeQ}%`)
+
+    const idsFromFood = miErr ? [] : Array.from(new Set((mi || []).map((x) => x.restaurant_id)))
+
+    constrainedRestaurantIds =
+      constrainedRestaurantIds === null ? idsFromFood : intersect(constrainedRestaurantIds, idsFromFood)
+  }
+
+  // ✅ Veg toggle (Option A): PURE VEG restaurants only
+  // Meaning: restaurant must have at least 1 veg available AND 0 non-veg available
+  if (veg === '1') {
+    const { data: flags, error: flagsErr } = await supabase
+      .from('restaurant_menu_flags') // VIEW
+      .select('restaurant_id')
+      .eq('has_veg_available', true)
+      .eq('has_nonveg_available', false)
+
+    const idsFromVeg = flagsErr ? [] : (flags || []).map((x) => x.restaurant_id)
+
+    constrainedRestaurantIds =
+      constrainedRestaurantIds === null ? idsFromVeg : intersect(constrainedRestaurantIds, idsFromVeg)
+  }
+
+  // Build restaurants query
+  let restaurantsQuery = supabase
+    .from('restaurants')
     .select(
       `
-    id,
-    slug,
-    name,
-    address,
-    image_url,
-    is_active,
-    city_id,
-    cities:city_id (
       id,
-      name
+      slug,
+      name,
+      address,
+      image_url,
+      is_active,
+      city_id,
+      cities:city_id ( id, name )
+    `
     )
-  `,
-    )
-    .eq("is_active", true)
-    .order("created_at", { ascending: false })
-    .limit(6);
+    .eq('is_active', true)
+    .order('created_at', { ascending: false })
 
-  if (error) console.log("Restaurants fetch error:", error);
+  if (city) restaurantsQuery = restaurantsQuery.eq('city_id', city)
+  if (type === 'restaurants' && q) restaurantsQuery = restaurantsQuery.ilike('name', `%${q}%`)
+
+  if (constrainedRestaurantIds !== null) {
+    restaurantsQuery =
+      constrainedRestaurantIds.length === 0
+        ? restaurantsQuery.in('id', ['00000000-0000-0000-0000-000000000000'])
+        : restaurantsQuery.in('id', constrainedRestaurantIds)
+  }
+
+  const { data: restaurants, error } = await restaurantsQuery
+  if (error) console.log('Restaurants fetch error:', error)
 
   return (
-    <>
-      {/* Featured Restaurants */}
-      <section id="restaurants" className="py-20 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-              Featured Restaurants
-            </h2>
-            <p className="text-xl text-gray-600">
-              Discover amazing restaurants near you
-            </p>
-          </div>
-
-          {restaurants && restaurants.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {restaurants.map((restaurant) => (
-                <RestaurantCard key={restaurant.id} restaurant={restaurant} />
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-16">
-              <div className="text-6xl mb-4">🏪</div>
-              <p className="text-xl text-gray-600">
-                No restaurants yet. Be the first!
-              </p>
-            </div>
-          )}
+    <section className="py-14 bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4">
+        <div className="text-center mb-10">
+          <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-3">Restaurants</h2>
+          <p className="text-lg text-gray-600">Search by restaurant, city, cuisine, or food item</p>
         </div>
-      </section>
-    </>
-  );
+
+        <div className="mb-8">
+          <RestaurantsFilters cities={cities || []} cuisines={cuisines || []} />
+        </div>
+
+        {restaurants && restaurants.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {restaurants.map((restaurant) => (
+              <RestaurantCard key={restaurant.id} restaurant={restaurant} />
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-16 bg-white rounded-2xl border">
+            <div className="text-6xl mb-4">🔎</div>
+            <p className="text-xl text-gray-700 font-semibold">No results found</p>
+            <p className="text-sm text-gray-500 mt-2">Try changing filters or search type.</p>
+          </div>
+        )}
+      </div>
+    </section>
+  )
 }

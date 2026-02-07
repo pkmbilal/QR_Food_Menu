@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
@@ -26,6 +26,7 @@ export default function EditMenuItemPage() {
     category_id: '',
     image_url: '',
     is_available: true,
+    is_veg: true, // ✅ NEW
   })
 
   useEffect(() => {
@@ -98,6 +99,7 @@ export default function EditMenuItemPage() {
       category_id: itemData.category_id || '',
       image_url: itemData.image_url || '',
       is_available: itemData.is_available ?? true,
+      is_veg: itemData.is_veg ?? true, // ✅ NEW (default to true if null)
     })
 
     setLoading(false)
@@ -108,13 +110,21 @@ export default function EditMenuItemPage() {
     setError('')
     setSaving(true)
 
+    const priceNum = Number.parseFloat(formData.price)
+    if (Number.isNaN(priceNum)) {
+      setError('Please enter a valid price.')
+      setSaving(false)
+      return
+    }
+
     const payload = {
       name: formData.name.trim(),
       description: formData.description.trim(),
-      price: parseFloat(formData.price),
+      price: priceNum,
       category_id: formData.category_id || null,
       image_url: formData.image_url?.trim() || null,
       is_available: !!formData.is_available,
+      is_veg: !!formData.is_veg, // ✅ NEW
     }
 
     const { error: updateErr } = await supabase
@@ -130,7 +140,7 @@ export default function EditMenuItemPage() {
     }
 
     setSaving(false)
-    router.push('/dashboard/owner') // back to dashboard
+    router.push('/dashboard/owner')
     router.refresh?.()
   }
 
@@ -214,7 +224,7 @@ export default function EditMenuItemPage() {
                 <select
                   value={formData.category_id || ''}
                   onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white"
                 >
                   <option value="">Uncategorized</option>
                   {categories.map((c) => (
@@ -245,6 +255,7 @@ export default function EditMenuItemPage() {
               )}
             </div>
 
+            {/* ✅ Availability */}
             <div className="flex items-center gap-3">
               <input
                 id="is_available"
@@ -256,6 +267,23 @@ export default function EditMenuItemPage() {
               <label htmlFor="is_available" className="text-sm font-semibold text-gray-700">
                 Available for ordering
               </label>
+            </div>
+
+            {/* ✅ NEW: Veg toggle */}
+            <div className="flex items-center gap-3">
+              <input
+                id="is_veg"
+                type="checkbox"
+                checked={formData.is_veg}
+                onChange={(e) => setFormData({ ...formData, is_veg: e.target.checked })}
+                className="w-5 h-5"
+              />
+              <label htmlFor="is_veg" className="text-sm font-semibold text-gray-700">
+                Veg item
+              </label>
+              <span className="text-xs text-gray-500">
+                {formData.is_veg ? '🥗 Veg' : '🍗 Non-veg'}
+              </span>
             </div>
 
             {error && (
