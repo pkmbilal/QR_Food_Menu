@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Pencil, Trash2, Ban, CheckCircle, X } from 'lucide-react'
-import { getCurrentUser, getUserProfile, signOut } from '@/lib/auth'
+import { getCurrentUser, getUserProfile } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
 
 export default function AdminDashboard() {
@@ -22,8 +22,14 @@ export default function AdminDashboard() {
   const [cityLoading, setCityLoading] = useState(false)
   const [cityError, setCityError] = useState('')
 
+  // ✅ Cuisines
+  const [cuisines, setCuisines] = useState([])
+  const [cuisineName, setCuisineName] = useState('')
+  const [cuisineLoading, setCuisineLoading] = useState(false)
+  const [cuisineError, setCuisineError] = useState('')
+
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState('pending') // pending, all, users, restaurants, cities
+  const [activeTab, setActiveTab] = useState('pending') // pending, all, users, restaurants, cities, cuisines
   const router = useRouter()
 
   useEffect(() => {
@@ -49,7 +55,13 @@ export default function AdminDashboard() {
       return
     }
 
-    await Promise.all([loadRequests(), loadUsers(), loadRestaurants(), loadCities()])
+    await Promise.all([
+      loadRequests(),
+      loadUsers(),
+      loadRestaurants(),
+      loadCities(),
+      loadCuisines(),
+    ])
 
     setLoading(false)
   }
@@ -103,10 +115,9 @@ export default function AdminDashboard() {
   }
 
   async function loadCities() {
-    const { data, error } = await supabase
-      .from('cities')
-      .select('*')
-      .order('name', { ascending: true })
+    const { data, error } = await supabase.from('cities').select('*').order('name', {
+      ascending: true,
+    })
 
     if (error) {
       console.error('Error loading cities:', error)
@@ -115,6 +126,21 @@ export default function AdminDashboard() {
     }
 
     setCities(data || [])
+  }
+
+  async function loadCuisines() {
+    const { data, error } = await supabase
+      .from('cuisines')
+      .select('*')
+      .order('name', { ascending: true })
+
+    if (error) {
+      console.error('Error loading cuisines:', error)
+      setCuisines([])
+      return
+    }
+
+    setCuisines(data || [])
   }
 
   /* ---------------- Users actions ---------------- */
@@ -181,7 +207,6 @@ export default function AdminDashboard() {
             owner_email: request.user_profiles?.email,
             is_active: true,
             approved_at: new Date().toISOString(),
-            // If you added city_id to restaurants table, enable this:
             // city_id: request.city_id,
           },
         ])
@@ -303,6 +328,73 @@ export default function AdminDashboard() {
     loadCities()
   }
 
+  /* ---------------- Cuisines actions ---------------- */
+  const handleAddCuisine = async (e) => {
+    e.preventDefault()
+    setCuisineError('')
+
+    const clean = cuisineName.trim()
+    if (!clean) return setCuisineError('Cuisine name cannot be empty')
+
+    setCuisineLoading(true)
+
+    const { error } = await supabase.from('cuisines').insert([{ name: clean }])
+
+    if (error) {
+      const msg = error.message?.toLowerCase().includes('duplicate')
+        ? 'Cuisine already exists.'
+        : error.message
+      setCuisineError(msg)
+      setCuisineLoading(false)
+      return
+    }
+
+    setCuisineName('')
+    setCuisineLoading(false)
+    loadCuisines()
+  }
+
+  const handleRenameCuisine = async (cuisineId, newName) => {
+    const clean = newName.trim()
+    if (!clean) return { ok: false, message: 'Name cannot be empty' }
+
+    const { error } = await supabase.from('cuisines').update({ name: clean }).eq('id', cuisineId)
+
+    if (error) {
+      const msg = error.message?.toLowerCase().includes('duplicate')
+        ? 'Cuisine already exists.'
+        : error.message
+      return { ok: false, message: msg }
+    }
+
+    await loadCuisines()
+    return { ok: true }
+  }
+
+  const handleToggleCuisine = async (cuisine) => {
+    const action = cuisine.is_active ? 'disable' : 'enable'
+    if (!confirm(`Are you sure you want to ${action} ${cuisine.name}?`)) return
+
+    const { error } = await supabase
+      .from('cuisines')
+      .update({ is_active: !cuisine.is_active })
+      .eq('id', cuisine.id)
+
+    if (error) return alert('Error updating cuisine: ' + error.message)
+
+    loadCuisines()
+  }
+
+  const handleDeleteCuisine = async (cuisine) => {
+    const confirmText = prompt(`Type "${cuisine.name}" to delete this cuisine:`)
+    if (confirmText !== cuisine.name) return
+
+    const { error } = await supabase.from('cuisines').delete().eq('id', cuisine.id)
+    if (error) return alert('Error deleting cuisine: ' + error.message)
+
+    loadCuisines()
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -332,7 +424,7 @@ export default function AdminDashboard() {
 
       {/* Stats */}
       <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-6 gap-6 mb-8">
           <div className="bg-white rounded-lg shadow p-6">
             <div className="text-gray-600 text-sm mb-1">Pending Requests</div>
             <div className="text-3xl font-bold text-yellow-600">{pendingRequests.length}</div>
@@ -353,66 +445,36 @@ export default function AdminDashboard() {
             <div className="text-gray-600 text-sm mb-1">Cities</div>
             <div className="text-3xl font-bold text-gray-800">{cities.length}</div>
           </div>
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="text-gray-600 text-sm mb-1">Cuisines</div>
+            <div className="text-3xl font-bold text-gray-800">{cuisines.length}</div>
+          </div>
         </div>
 
         {/* Tabs */}
         <div className="bg-white rounded-lg shadow mb-6">
           <div className="border-b border-gray-200">
             <div className="flex gap-4 px-6 overflow-x-auto">
-              <button
-                onClick={() => setActiveTab('pending')}
-                className={`py-4 px-2 border-b-2 font-semibold transition-colors ${
-                  activeTab === 'pending'
-                    ? 'border-primary text-green-600'
-                    : 'border-transparent text-gray-600 hover:text-gray-800'
-                }`}
-              >
-                Pending Requests ({pendingRequests.length})
-              </button>
-
-              <button
-                onClick={() => setActiveTab('all')}
-                className={`py-4 px-2 border-b-2 font-semibold transition-colors ${
-                  activeTab === 'all'
-                    ? 'border-primary text-green-600'
-                    : 'border-transparent text-gray-600 hover:text-gray-800'
-                }`}
-              >
-                All Requests
-              </button>
-
-              <button
-                onClick={() => setActiveTab('users')}
-                className={`py-4 px-2 border-b-2 font-semibold transition-colors ${
-                  activeTab === 'users'
-                    ? 'border-primary text-green-600'
-                    : 'border-transparent text-gray-600 hover:text-gray-800'
-                }`}
-              >
-                Users
-              </button>
-
-              <button
-                onClick={() => setActiveTab('restaurants')}
-                className={`py-4 px-2 border-b-2 font-semibold transition-colors ${
-                  activeTab === 'restaurants'
-                    ? 'border-primary text-green-600'
-                    : 'border-transparent text-gray-600 hover:text-gray-800'
-                }`}
-              >
-                Restaurants
-              </button>
-
-              <button
-                onClick={() => setActiveTab('cities')}
-                className={`py-4 px-2 border-b-2 font-semibold transition-colors ${
-                  activeTab === 'cities'
-                    ? 'border-primary text-green-600'
-                    : 'border-transparent text-gray-600 hover:text-gray-800'
-                }`}
-              >
-                Cities
-              </button>
+              {[
+                ['pending', `Pending Requests (${pendingRequests.length})`],
+                ['all', 'All Requests'],
+                ['users', 'Users'],
+                ['restaurants', 'Restaurants'],
+                ['cities', 'Cities'],
+                ['cuisines', 'Cuisines'],
+              ].map(([key, label]) => (
+                <button
+                  key={key}
+                  onClick={() => setActiveTab(key)}
+                  className={`py-4 px-2 border-b-2 font-semibold transition-colors ${
+                    activeTab === key
+                      ? 'border-primary text-green-600'
+                      : 'border-transparent text-gray-600 hover:text-gray-800'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
           </div>
 
@@ -609,7 +671,9 @@ export default function AdminDashboard() {
                     </div>
 
                     {userItem.id === user.id && (
-                      <p className="text-xs text-gray-500 mt-3 italic">You cannot modify your own account</p>
+                      <p className="text-xs text-gray-500 mt-3 italic">
+                        You cannot modify your own account
+                      </p>
                     )}
                   </div>
                 ))}
@@ -626,11 +690,7 @@ export default function AdminDashboard() {
                   </div>
                 ) : (
                   allRestaurants.map((restaurant) => (
-                    <RestaurantCard
-                      key={restaurant.id}
-                      restaurant={restaurant}
-                      onUpdate={loadRestaurants}
-                    />
+                    <RestaurantCard key={restaurant.id} restaurant={restaurant} onUpdate={loadRestaurants} />
                   ))
                 )}
               </div>
@@ -639,7 +699,6 @@ export default function AdminDashboard() {
             {/* Cities */}
             {activeTab === 'cities' && (
               <div className="space-y-6">
-                {/* Add City */}
                 <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
                   <h3 className="text-lg font-bold text-gray-800 mb-3">Add City</h3>
 
@@ -667,7 +726,6 @@ export default function AdminDashboard() {
                   )}
                 </div>
 
-                {/* Pills */}
                 {cities.length === 0 ? (
                   <div className="text-center py-12 text-gray-600">No cities yet. Add your first one.</div>
                 ) : (
@@ -685,6 +743,56 @@ export default function AdminDashboard() {
                 )}
               </div>
             )}
+
+            {/* ✅ Cuisines */}
+            {activeTab === 'cuisines' && (
+              <div className="space-y-6">
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
+                  <h3 className="text-lg font-bold text-gray-800 mb-3">Add Cuisine</h3>
+
+                  <form onSubmit={handleAddCuisine} className="flex flex-col sm:flex-row gap-3">
+                    <input
+                      value={cuisineName}
+                      onChange={(e) => setCuisineName(e.target.value)}
+                      placeholder="e.g., Arabic, South Indian"
+                      className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                    />
+
+                    <button
+                      type="submit"
+                      disabled={cuisineLoading}
+                      className="bg-primary hover:bg-green-600 text-white px-6 py-3 rounded-lg font-semibold disabled:bg-gray-400"
+                    >
+                      {cuisineLoading ? 'Adding...' : 'Add'}
+                    </button>
+                  </form>
+
+                  {cuisineError && (
+                    <div className="mt-3 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+                      {cuisineError}
+                    </div>
+                  )}
+                </div>
+
+                {cuisines.length === 0 ? (
+                  <div className="text-center py-12 text-gray-600">
+                    No cuisines yet. Add your first one.
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {cuisines.map((c) => (
+                      <CuisinePill
+                        key={c.id}
+                        cuisine={c}
+                        onRename={handleRenameCuisine}
+                        onToggle={handleToggleCuisine}
+                        onDelete={handleDeleteCuisine}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -692,7 +800,7 @@ export default function AdminDashboard() {
   )
 }
 
-/* ---------------- City Pill (outside) ---------------- */
+/* ---------------- City Pill ---------------- */
 function CityPill({ city, onRename, onToggle, onDelete }) {
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState(city.name)
@@ -727,7 +835,6 @@ function CityPill({ city, onRename, onToggle, onDelete }) {
             {city.name}
           </span>
 
-          {/* Rename */}
           <button
             type="button"
             onClick={() => setEditing(true)}
@@ -737,7 +844,6 @@ function CityPill({ city, onRename, onToggle, onDelete }) {
             <Pencil className="h-4 w-4" />
           </button>
 
-          {/* Disable/Enable */}
           <button
             type="button"
             onClick={() => onToggle(city)}
@@ -751,7 +857,6 @@ function CityPill({ city, onRename, onToggle, onDelete }) {
             {city.is_active ? <Ban className="h-4 w-4" /> : <CheckCircle className="h-4 w-4" />}
           </button>
 
-          {/* Delete */}
           <button
             type="button"
             onClick={() => onDelete(city)}
@@ -800,7 +905,114 @@ function CityPill({ city, onRename, onToggle, onDelete }) {
   )
 }
 
-/* ---------------- Restaurant Card (outside) ---------------- */
+/* ---------------- Cuisine Pill ---------------- */
+function CuisinePill({ cuisine, onRename, onToggle, onDelete }) {
+  const [editing, setEditing] = useState(false)
+  const [name, setName] = useState(cuisine.name)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => setName(cuisine.name), [cuisine.name])
+
+  const save = async () => {
+    setError('')
+    setSaving(true)
+
+    const res = await onRename(cuisine.id, name)
+
+    setSaving(false)
+    if (!res?.ok) {
+      setError(res?.message || 'Failed to rename')
+      return
+    }
+    setEditing(false)
+  }
+
+  return (
+    <div
+      className={`flex items-center gap-2 px-3 py-1 rounded-full border ${
+        cuisine.is_active ? 'bg-gray-100 border-gray-200' : 'bg-red-50 border-red-200'
+      }`}
+    >
+      {!editing ? (
+        <>
+          <span
+            className={`text-sm font-semibold ${cuisine.is_active ? 'text-gray-800' : 'text-red-700'}`}
+          >
+            {cuisine.name}
+          </span>
+
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            className="p-1 rounded-full text-gray-600 hover:text-gray-900 hover:bg-white/70 transition cursor-pointer"
+            title="Rename"
+          >
+            <Pencil className="h-4 w-4" />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onToggle(cuisine)}
+            className={`p-1 rounded-full transition cursor-pointer ${
+              cuisine.is_active
+                ? 'text-yellow-700 hover:text-yellow-900 hover:bg-white/70'
+                : 'text-green-700 hover:text-green-900 hover:bg-white/70'
+            }`}
+            title={cuisine.is_active ? 'Disable' : 'Enable'}
+          >
+            {cuisine.is_active ? <Ban className="h-4 w-4" /> : <CheckCircle className="h-4 w-4" />}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onDelete(cuisine)}
+            className="p-1 rounded-full text-red-600 hover:text-red-800 hover:bg-white/70 transition cursor-pointer"
+            title="Delete"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </>
+      ) : (
+        <>
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="w-32 text-sm px-2 py-1 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary focus:border-transparent bg-white"
+            autoFocus
+          />
+
+          <button
+            type="button"
+            onClick={save}
+            disabled={saving}
+            className="p-1 rounded-full text-green-700 hover:text-green-900 hover:bg-white/70 transition disabled:opacity-50"
+            title="Save"
+          >
+            <CheckCircle className="h-4 w-4" />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setEditing(false)
+              setName(cuisine.name)
+              setError('')
+            }}
+            className="p-1 rounded-full text-gray-600 hover:text-gray-900 hover:bg-white/70 transition"
+            title="Cancel"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </>
+      )}
+
+      {error && <span className="text-xs text-red-600 ml-1">{error}</span>}
+    </div>
+  )
+}
+
+/* ---------------- Restaurant Card ---------------- */
 function RestaurantCard({ restaurant, onUpdate }) {
   const [menuItemCount, setMenuItemCount] = useState(0)
   const [loading, setLoading] = useState(false)

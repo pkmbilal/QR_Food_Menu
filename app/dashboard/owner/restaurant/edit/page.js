@@ -15,12 +15,16 @@ export default function EditRestaurantPage() {
   // ✅ Cities list
   const [cities, setCities] = useState([])
 
+  // ✅ Cuisines list + selected cuisines
+  const [cuisines, setCuisines] = useState([])
+  const [selectedCuisineIds, setSelectedCuisineIds] = useState([])
+
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
     address: '',
     image_url: '',
-    city_id: '', // ✅ NEW
+    city_id: '',
     is_active: true,
   })
 
@@ -49,6 +53,37 @@ export default function EditRestaurantPage() {
     setCities(data || [])
   }
 
+  async function loadCuisines() {
+    const { data, error } = await supabase
+      .from('cuisines')
+      .select('id, name')
+      .eq('is_active', true)
+      .order('name', { ascending: true })
+
+    if (error) {
+      console.error('Error loading cuisines:', error)
+      setCuisines([])
+      return
+    }
+
+    setCuisines(data || [])
+  }
+
+  async function loadSelectedCuisines(restaurantId) {
+    const { data, error } = await supabase
+      .from('restaurant_cuisines')
+      .select('cuisine_id')
+      .eq('restaurant_id', restaurantId)
+
+    if (error) {
+      console.error('Error loading selected cuisines:', error)
+      setSelectedCuisineIds([])
+      return
+    }
+
+    setSelectedCuisineIds((data || []).map((x) => x.cuisine_id))
+  }
+
   async function loadData() {
     setLoading(true)
 
@@ -64,10 +99,12 @@ export default function EditRestaurantPage() {
       return
     }
 
-    // ✅ load cities + restaurant
-    await loadCities()
+    // ✅ load cities + cuisines first (for dropdowns)
+    await Promise.all([loadCities(), loadCuisines()])
 
-    const { data: userRestaurant, error: restaurantError } = await getUserRestaurant(currentUser.id)
+    const { data: userRestaurant, error: restaurantError } = await getUserRestaurant(
+      currentUser.id,
+    )
     if (restaurantError || !userRestaurant) {
       setError('No restaurant found for this owner. Please contact admin.')
       setLoading(false)
@@ -80,9 +117,12 @@ export default function EditRestaurantPage() {
       phone: userRestaurant.phone || '',
       address: userRestaurant.address || '',
       image_url: userRestaurant.image_url || '',
-      city_id: userRestaurant.city_id || '', // ✅ NEW
+      city_id: userRestaurant.city_id || '',
       is_active: userRestaurant.is_active ?? true,
     })
+
+    // ✅ load selected cuisines for this restaurant
+    await loadSelectedCuisines(userRestaurant.id)
 
     setLoading(false)
   }
@@ -100,7 +140,7 @@ export default function EditRestaurantPage() {
       phone: formData.phone.trim(),
       address: formData.address.trim(),
       image_url: formData.image_url.trim(),
-      city_id: formData.city_id || null, // ✅ NEW
+      city_id: formData.city_id || null,
       is_active: formData.is_active,
     }
 
@@ -115,6 +155,33 @@ export default function EditRestaurantPage() {
       setError('Failed to update: ' + dbError.message)
       setSaving(false)
       return
+    }
+
+    // ✅ Save cuisines mapping (replace all)
+    const { error: delError } = await supabase
+      .from('restaurant_cuisines')
+      .delete()
+      .eq('restaurant_id', restaurant.id)
+
+    if (delError) {
+      setError('Restaurant saved, but failed to update cuisines: ' + delError.message)
+      setSaving(false)
+      return
+    }
+
+    if (selectedCuisineIds.length > 0) {
+      const rows = selectedCuisineIds.map((cid) => ({
+        restaurant_id: restaurant.id,
+        cuisine_id: cid,
+      }))
+
+      const { error: insError } = await supabase.from('restaurant_cuisines').insert(rows)
+
+      if (insError) {
+        setError('Restaurant saved, but failed to update cuisines: ' + insError.message)
+        setSaving(false)
+        return
+      }
     }
 
     setSuccess('Saved ✅')
@@ -169,11 +236,9 @@ export default function EditRestaurantPage() {
               />
             </div>
 
-            {/* ✅ City dropdown */}
+            {/* City dropdown */}
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                City *
-              </label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">City *</label>
               <select
                 value={formData.city_id}
                 onChange={(e) => setFormData({ ...formData, city_id: e.target.value })}
@@ -194,6 +259,57 @@ export default function EditRestaurantPage() {
                 <p className="text-xs text-gray-500 mt-1">
                   No active cities found. Ask admin to add cities.
                 </p>
+              )}
+            </div>
+
+            {/* ✅ Cuisines multi-select */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Cuisines
+              </label>
+
+              <select
+                multiple
+                value={selectedCuisineIds}
+                onChange={(e) => {
+                  const values = Array.from(e.target.selectedOptions).map((o) => o.value)
+                  setSelectedCuisineIds(values)
+                }}
+                className="w-full min-h-[120px] px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white"
+              >
+                {cuisines.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+
+              {cuisines.length === 0 ? (
+                <p className="text-xs text-gray-500 mt-1">
+                  No cuisines found. Ask admin to add cuisines.
+                </p>
+              ) : (
+                <p className="text-xs text-gray-500 mt-1">
+                  Tip: Hold Ctrl (Windows) / Cmd (Mac) to select multiple.
+                </p>
+              )}
+
+              {/* Selected preview */}
+              {selectedCuisineIds.length > 0 && cuisines.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {selectedCuisineIds.map((id) => {
+                    const c = cuisines.find((x) => x.id === id)
+                    if (!c) return null
+                    return (
+                      <span
+                        key={id}
+                        className="text-xs px-2 py-1 rounded-full bg-green-50 text-green-700 border border-green-200"
+                      >
+                        {c.name}
+                      </span>
+                    )
+                  })}
+                </div>
               )}
             </div>
 
