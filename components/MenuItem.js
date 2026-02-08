@@ -1,89 +1,234 @@
-'use client'
+"use client";
 
-import { useCart } from '@/app/CartContext'
+import { useCart } from "@/app/CartContext";
+import { ShoppingCart, Plus, Minus, Clock } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 export default function MenuItem({ item, restaurant, categoryMap = {} }) {
-  const { addToCart } = useCart()
+  const { addToCart, cartItems, updateQuantity, removeFromCart } = useCart();
+  const soldOut = !!item.is_sold_out;
 
-  const soldOut = !!item.is_sold_out
+  // ✅ FIX: normalize id types so inCartCount works
+  const cartItem = cartItems.find((ci) => String(ci.id) === String(item.id));
+  const inCartCount = cartItem?.quantity || 0;
 
   const handleAddToCart = () => {
-    if (soldOut) return
-    addToCart(item, restaurant)
-  }
+    if (soldOut) return;
+    addToCart(item, restaurant);
+  };
+
+  const handleIncrement = () => {
+    if (soldOut) return;
+    addToCart(item, restaurant);
+  };
+
+  const handleDecrement = () => {
+    if (soldOut) return;
+    if (!cartItem) return;
+    const nextQty = inCartCount - 1;
+    if (nextQty <= 0) removeFromCart(item.id);
+    else updateQuantity(item.id, nextQty);
+  };
 
   const categoryName = item.category_id
-    ? categoryMap[item.category_id] || 'Uncategorized'
-    : 'Uncategorized'
+    ? categoryMap[item.category_id] || "Uncategorized"
+    : "Uncategorized";
 
   return (
-    <div
-      className={[
-        'bg-white rounded-lg shadow-md overflow-hidden transition-shadow',
-        soldOut ? 'opacity-60' : 'hover:shadow-lg',
-      ].join(' ')}
-    >
-      {/* Image */}
-      {item.image_url && (
-        <div className="relative w-full h-48 overflow-hidden bg-gray-200">
-          <img
-            src={item.image_url}
-            alt={item.name}
-            className="w-full h-full object-cover"
-          />
-
-          {/* Sold Out Pill (on image) */}
-          {soldOut && (
-            <span className="absolute top-3 right-3 inline-flex items-center rounded-full bg-white/90 text-gray-900 text-xs font-semibold px-3 py-1 shadow-sm border">
-              Sold Out
-            </span>
+    <>
+      {/* MOBILE */}
+      <div className="sm:hidden">
+        <div
+          className={cn(
+            "relative bg-white rounded-2xl mb-3 shadow-sm border border-gray-100 transition-all overflow-hidden",
+            soldOut ? "opacity-60" : "hover:border-gray-200"
           )}
-        </div>
-      )}
+        >
+          {/* ✅ Use min-h so description can show */}
+          <div className="flex min-h-28">
+            {/* Left: image */}
+            <div className="relative w-32 h-32 shrink-0">
+              <div className="w-full h-full overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100">
+                {item.image_url ? (
+                  <img
+                    src={item.image_url}
+                    alt={item.name}
+                    className="w-full h-full object-cover"
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                    <ShoppingCart className="h-8 w-8" />
+                  </div>
+                )}
 
-      {/* Content */}
-      <div className="p-4">
-        {/* Category Badge */}
-        <span className="inline-block bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full mb-2">
-          {item.categories?.name || categoryName}
-        </span>
+                {soldOut && (
+                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                    <span className="text-white font-bold text-xs px-2 py-0.5 bg-black/70 rounded-full">
+                      SOLD OUT
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
 
-        {/* Name */}
-        <h3 className="text-xl font-bold text-gray-800 mb-2">{item.name}</h3>
+            {/* Right content */}
+            <div className="flex-1 min-w-0 p-4 flex flex-col">
+              {/* Top row: name + price */}
+              <div className="flex items-start justify-between gap-2">
+                <h3 className="font-bold text-gray-900 text-sm leading-tight line-clamp-1">
+                  {item.name}
+                </h3>
+                <span className="text-sm font-bold text-gray-900 shrink-0 pt-0.5">
+                  SAR {Number(item.price).toFixed(2)}
+                </span>
+              </div>
 
-        {/* Description */}
-        <p className="text-gray-600 text-sm mb-4 line-clamp-2 hidden sm:block">
-          {item.description}
-        </p>
+              {/* Description */}
+              {/* {item.description && (
+                <p className="mt-1.5 text-xs text-gray-600 line-clamp-2 leading-relaxed">
+                  {item.description}
+                </p>
+              )} */}
 
-        {/* Price and Button Row */}
-        <div className="flex items-center justify-between">
-          <span className="text-xl font-bold text-primary">SAR {item.price}</span>
+              {/* Badges */}
+              <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                <Badge
+                  variant="outline"
+                  className="text-[10px] font-normal text-gray-600 border-gray-200 h-5"
+                >
+                  {item.categories?.name || categoryName}
+                </Badge>
 
-          <button
-            className={[
-              'font-bold px-3 py-2 rounded-lg transition-colors',
-              soldOut
-                ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
-                : 'bg-primary hover:bg-green-600 text-white cursor-pointer',
-            ].join(' ')}
-            onClick={handleAddToCart}
-            disabled={soldOut}
-            aria-disabled={soldOut}
-          >
-            Add to Cart
-          </button>
-        </div>
+                {item.prep_time && (
+                  <Badge variant="outline" className="text-[10px] gap-1 h-5 px-1.5">
+                    <Clock className="h-2.5 w-2.5" />
+                    {item.prep_time}min
+                  </Badge>
+                )}
+              </div>
 
-        {/* Sold Out Pill (fallback if no image) */}
-        {!item.image_url && soldOut && (
-          <div className="mt-3">
-            <span className="inline-flex items-center rounded-full bg-gray-100 text-gray-800 text-xs font-semibold px-3 py-1 border">
-              Sold Out
-            </span>
+              {/* Bottom row */}
+              <div className="mt-auto flex items-center justify-between">
+                <div className="text-xs text-gray-400" />
+
+                {inCartCount > 0 ? (
+                  <div className="flex items-center gap-1.5 bg-green-50 rounded-full px-1.5 py-1 border border-green-100">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-6 w-6 rounded-full bg-white shadow-sm"
+                      onClick={handleDecrement}
+                      aria-label="Decrease"
+                    >
+                      <Minus className="h-2.5 w-2.5" />
+                    </Button>
+
+                    <span className="text-xs font-bold text-green-700 min-w-[16px] text-center">
+                      {inCartCount}
+                    </span>
+
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-6 w-6 rounded-full bg-white shadow-sm"
+                      onClick={handleIncrement}
+                      aria-label="Increase"
+                    >
+                      <Plus className="h-2.5 w-2.5" />
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    onClick={handleAddToCart}
+                    disabled={soldOut}
+                    size="sm"
+                    className={cn(
+                      "h-7 rounded-full px-3 text-xs font-medium transition-all",
+                      soldOut
+                        ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                        : "bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-sm hover:shadow"
+                    )}
+                  >
+                    {soldOut ? (
+                      "Sold Out"
+                    ) : (
+                      <>
+                        <Plus className="h-3 w-3 mr-1" />
+                        Add
+                      </>
+                    )}
+                  </Button>
+                )}
+              </div>
+            </div>
           </div>
-        )}
+        </div>
       </div>
-    </div>
-  )
+
+      {/* DESKTOP/TABLET (unchanged) */}
+      <div className="hidden sm:block">
+        <Card
+          className={cn(
+            "overflow-hidden transition-shadow border !py-0 !pb-2",
+            soldOut ? "opacity-60" : "hover:shadow-md hover:border-gray-200"
+          )}
+        >
+          <CardContent className="p-0">
+            {item.image_url && (
+              <div className="relative w-full h-48 overflow-hidden bg-muted">
+                <img
+                  src={item.image_url}
+                  alt={item.name}
+                  className="w-full h-full object-cover"
+                  loading="lazy"
+                />
+                {soldOut && (
+                  <span className="absolute top-3 right-3 inline-flex items-center rounded-full bg-background/90 text-foreground text-xs font-semibold px-3 py-1 shadow-sm border">
+                    Sold out
+                  </span>
+                )}
+              </div>
+            )}
+
+            <div className="p-4">
+              <Badge variant="secondary" className="mb-2">
+                {item.categories?.name || categoryName}
+              </Badge>
+
+              <h3 className="text-lg font-bold leading-tight">{item.name}</h3>
+
+              {item.description && (
+                <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
+                  {item.description}
+                </p>
+              )}
+
+              <div className="mt-4 flex items-center justify-between">
+                <span className="text-lg font-bold text-primary">
+                  SAR {Number(item.price).toFixed(2)}
+                </span>
+
+                <Button onClick={handleAddToCart} disabled={soldOut} className="rounded-lg cursor-pointer">
+                  <ShoppingCart className="h-4 w-4 mr-2" />
+                  Add to Cart
+                </Button>
+              </div>
+
+              {!item.image_url && soldOut && (
+                <div className="mt-3">
+                  <Badge variant="outline" className="rounded-full">
+                    Sold out
+                  </Badge>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </>
+  );
 }

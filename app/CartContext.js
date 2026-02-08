@@ -1,68 +1,139 @@
 'use client'
 
-import { createContext, useContext, useState } from 'react'
+import { createContext, useContext, useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
+
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { Badge } from '@/components/ui/badge'
+import { Separator } from '@/components/ui/separator'
+
+import { TriangleAlert, Store, ShoppingCart } from 'lucide-react'
 
 const CartContext = createContext()
 
+function getRestaurantKey(r) {
+  if (!r) return null
+  return r.id ?? r.slug ?? null
+}
+
+function normalizeRestaurant(r) {
+  if (!r) return null
+  return {
+    id: r.id ?? null,
+    slug: r.slug ?? null,
+    name: r.name ?? null,
+    phone: r.phone ?? null,
+  }
+}
+
 export function CartProvider({ children }) {
+  const router = useRouter()
+
   const [cartItems, setCartItems] = useState([])
   const [restaurant, setRestaurant] = useState(null)
 
-  // Add item to cart
+  // Dialog state (custom shadcn popup)
+  const [conflictOpen, setConflictOpen] = useState(false)
+  const [conflictInfo, setConflictInfo] = useState(null)
+
+  // Add item to cart (✅ single restaurant enforcement)
   const addToCart = (item, restaurantInfo) => {
-    // Store restaurant on first item added
-    if (!restaurant && restaurantInfo) {
-      setRestaurant(restaurantInfo)
+    const incomingRestaurant = normalizeRestaurant(restaurantInfo)
+    const incomingKey = getRestaurantKey(incomingRestaurant)
+    const currentKey = getRestaurantKey(restaurant)
+
+    // If restaurant info missing, show dialog too (optional safety)
+    if (!incomingKey) {
+      setConflictInfo({
+        type: 'MISSING_RESTAURANT',
+        currentRestaurant: restaurant,
+        incomingRestaurant: null,
+      })
+      setConflictOpen(true)
+      return { ok: false, reason: 'MISSING_RESTAURANT' }
     }
-    
+
+    // 🚫 Different restaurant -> show dialog, do NOT add
+    if (currentKey && currentKey !== incomingKey) {
+      setConflictInfo({
+        type: 'DIFFERENT_RESTAURANT',
+        currentRestaurant: restaurant,
+        incomingRestaurant,
+      })
+      setConflictOpen(true)
+      return { ok: false, reason: 'DIFFERENT_RESTAURANT' }
+    }
+
+    // First item -> set restaurant
+    if (!currentKey) {
+      setRestaurant(incomingRestaurant)
+    }
+
     setCartItems((prevItems) => {
-      // Check if item already in cart
       const existingItem = prevItems.find((i) => i.id === item.id)
-      
+
       if (existingItem) {
-        // Increase quantity
         return prevItems.map((i) =>
           i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i
         )
-      } else {
-        // Add new item with quantity 1
-        return [...prevItems, { ...item, quantity: 1 }]
       }
+
+      return [...prevItems, { ...item, quantity: 1 }]
+    })
+
+    return { ok: true }
+  }
+
+  const removeFromCart = (itemId) => {
+    setCartItems((prevItems) => {
+      const next = prevItems.filter((i) => i.id !== itemId)
+      if (next.length === 0) setRestaurant(null)
+      return next
     })
   }
 
-  // Remove item from cart
-  const removeFromCart = (itemId) => {
-    setCartItems((prevItems) => prevItems.filter((i) => i.id !== itemId))
-  }
-
-  // Update quantity
   const updateQuantity = (itemId, newQuantity) => {
-    if (newQuantity === 0) {
-      removeFromCart(itemId)
-    } else {
-      setCartItems((prevItems) =>
-        prevItems.map((i) =>
-          i.id === itemId ? { ...i, quantity: newQuantity } : i
-        )
-      )
-    }
+    setCartItems((prevItems) => {
+      const next =
+        newQuantity <= 0
+          ? prevItems.filter((i) => i.id !== itemId)
+          : prevItems.map((i) =>
+              i.id === itemId ? { ...i, quantity: newQuantity } : i
+            )
+
+      if (next.length === 0) setRestaurant(null)
+      return next
+    })
   }
 
-  // Clear cart
   const clearCart = () => {
     setCartItems([])
     setRestaurant(null)
   }
 
-  // Get total price
-  const totalPrice = cartItems.reduce(
-    (sum, item) => sum + item.price * item.quantity,
-    0
+  const totalPrice = useMemo(
+    () => cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0),
+    [cartItems]
   )
 
-  // Get total items count
-  const totalItems = cartItems.reduce((sum, item) => sum + item.quantity, 0)
+  const totalItems = useMemo(
+    () => cartItems.reduce((sum, item) => sum + item.quantity, 0),
+    [cartItems]
+  )
+
+  const goToCart = () => {
+    setConflictOpen(false)
+    router.push('/cart')
+  }
 
   return (
     <CartContext.Provider
@@ -78,15 +149,65 @@ export function CartProvider({ children }) {
       }}
     >
       {children}
+
+      {/* ✅ Custom shadcn popup (global) */}
+      <AlertDialog open={conflictOpen} onOpenChange={setConflictOpen}>
+        <AlertDialogContent className="sm:max-w-[460px]">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <TriangleAlert className="h-5 w-5 text-destructive" />
+              One restaurant per order
+            </AlertDialogTitle>
+
+            <AlertDialogDescription className="text-sm">
+              {conflictInfo?.type === 'DIFFERENT_RESTAURANT' ? (
+                <>
+                  Your cart already has items from another restaurant.
+                  <br />
+                  Please checkout or clear your cart before adding from a different one.
+                </>
+              ) : (
+                <>We couldn’t identify the restaurant for this item. Please refresh and try again.</>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          {conflictInfo?.type === 'DIFFERENT_RESTAURANT' && (
+            <div className="mt-2 space-y-3">
+              <Separator />
+
+              <div className="grid gap-2">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm text-muted-foreground">Current cart</span>
+                  <Badge variant="secondary" className="gap-1">
+                    <Store className="h-3.5 w-3.5" />
+                    {conflictInfo?.currentRestaurant?.name ?? 'Restaurant'}
+                  </Badge>
+                </div>
+
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm text-muted-foreground">Tried to add</span>
+                  <Badge variant="outline" className="gap-1">
+                    <ShoppingCart className="h-3.5 w-3.5" />
+                    {conflictInfo?.incomingRestaurant?.name ?? 'Restaurant'}
+                  </Badge>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <AlertDialogFooter>
+            <AlertDialogCancel>Close</AlertDialogCancel>
+            <AlertDialogAction onClick={goToCart}>Go to cart</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </CartContext.Provider>
   )
 }
 
-// Custom hook to use cart
 export function useCart() {
   const context = useContext(CartContext)
-  if (!context) {
-    throw new Error('useCart must be used within CartProvider')
-  }
+  if (!context) throw new Error('useCart must be used within CartProvider')
   return context
 }

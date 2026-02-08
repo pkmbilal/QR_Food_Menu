@@ -7,13 +7,9 @@ import FavoriteButton from "@/components/FavoriteButton"
 
 import { QrCode, Phone } from "lucide-react"
 
-// Optional: helps with burst traffic; remove if you need fully live updates
-// export const revalidate = 60
-
 export default async function MenuPage({ params }) {
   const { restaurantSlug } = await params
 
-  // ✅ ONE restaurant fetch: includes city + cuisines join
   const { data: restaurant, error: restaurantError } = await supabase
     .from("restaurants")
     .select(`
@@ -40,8 +36,8 @@ export default async function MenuPage({ params }) {
     )
   }
 
-  // ✅ Fetch menu items + join categories (matches MenuItem usage: item.categories?.name)
-  // ✅ Filter: NOT sold out (handles null too)
+  // ✅ Fetch menu items + include sold out items (NO filter)
+  // ✅ Order: category -> available first -> name
   const { data: items, error: itemsError } = await supabase
     .from("menu_items")
     .select(`
@@ -49,8 +45,8 @@ export default async function MenuPage({ params }) {
       categories:categories ( id, name )
     `)
     .eq("restaurant_id", restaurant.id)
-    .or("is_sold_out.is.null,is_sold_out.eq.false")
     .order("category_id", { ascending: true })
+    .order("is_sold_out", { ascending: true, nullsFirst: true }) // false/null first, true last
     .order("name", { ascending: true })
 
   if (itemsError) {
@@ -59,16 +55,13 @@ export default async function MenuPage({ params }) {
 
   const menuItems = itemsError ? [] : items || []
 
-  // ✅ City name
   const cityName = restaurant?.city?.name || ""
 
-  // ✅ Cuisine pills (actual from your schema)
   const cuisinePills =
     restaurant?.restaurant_cuisines
       ?.map((rc) => rc?.cuisine?.name)
       .filter(Boolean) || []
 
-  // ✅ Group items by category name (from join)
   const grouped = menuItems.reduce((acc, item) => {
     const key = item?.categories?.name || "Uncategorized"
     if (!acc[key]) acc[key] = []
@@ -94,7 +87,6 @@ export default async function MenuPage({ params }) {
     <div className="min-h-screen">
       {/* HEADER */}
       <div className="relative overflow-hidden text-white">
-        {/* Background image / fallback */}
         {restaurant.image_url ? (
           <div
             className="absolute inset-0 bg-cover bg-center"
@@ -104,11 +96,9 @@ export default async function MenuPage({ params }) {
           <div className="absolute inset-0 bg-gradient-to-r from-green-500 to-green-700" />
         )}
 
-        {/* Overlays */}
         <div className="absolute inset-0 bg-black/55" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-black/60" />
 
-        {/* Content */}
         <div className="relative">
           <div className="max-w-7xl mx-auto px-4 py-12 md:py-16">
             <div className="max-w-3xl">
@@ -117,17 +107,13 @@ export default async function MenuPage({ params }) {
                   {restaurant.name}
                 </h1>
 
-                {/* Pills row */}
                 <div className="mt-4 flex flex-wrap gap-2">
-                  {/* Dummy Open Now */}
                   <Pill className="bg-emerald-500/25 border-emerald-300/30">
                     🟢 Open now
                   </Pill>
 
-                  {/* City */}
                   {cityName && <Pill className="bg-white/10">📍 {cityName}</Pill>}
 
-                  {/* Delivery / Pickup */}
                   {restaurant.delivery_available && (
                     <Pill className="bg-white/10">🚚 Delivery</Pill>
                   )}
@@ -135,20 +121,17 @@ export default async function MenuPage({ params }) {
                     <Pill className="bg-white/10">🧍 Pickup</Pill>
                   )}
 
-                  {/* Cuisine pills */}
                   {cuisinePills.slice(0, 8).map((c) => (
                     <Pill key={c} className="bg-white/10">
                       🍽️ {c}
                     </Pill>
                   ))}
 
-                  {/* Fallback if no cuisines assigned */}
                   {cuisinePills.length === 0 && (
                     <Pill className="bg-white/10">🍽️ Multi-cuisine</Pill>
                   )}
                 </div>
 
-                {/* Address / Phone */}
                 <div className="mt-4 space-y-2">
                   {restaurant.address && (
                     <p className="text-white/90 text-base md:text-lg flex items-start gap-2">
@@ -165,7 +148,6 @@ export default async function MenuPage({ params }) {
                   )}
                 </div>
 
-                {/* Actions */}
                 <div className="mt-5 flex flex-wrap items-center gap-3">
                   <FavoriteButton restaurantId={restaurant.id} />
 
@@ -215,13 +197,13 @@ export default async function MenuPage({ params }) {
                   </span>
                 </div>
 
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="grid gap-1 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4">
                   {grouped[cat].map((item) => (
                     <MenuItem
                       key={item.id}
                       item={item}
                       restaurant={restaurant}
-                      categoryMap={{}} // not needed when using categories join
+                      categoryMap={{}}
                     />
                   ))}
                 </div>
