@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase'
-import RestaurantCard from '@/components/RestaurantCard'
-import RestaurantsFilters from '@/components/RestaurantsFilters'
+import RestaurantCard from '@/components/restaurant/RestaurantCard'
+import RestaurantsFilters from '@/components/restaurant/RestaurantsFilters'
 
 export default async function RestaurantsPage({ searchParams }) {
   // ✅ Next.js 15 can pass searchParams as Promise in some setups
@@ -97,19 +97,19 @@ export default async function RestaurantsPage({ searchParams }) {
   if (error) console.log('Restaurants fetch error:', error)
 
   return (
-    <section className="py-14 bg-gray-50">
+    <section className="pt-4 pb-4 md:py-10 bg-gray-50">
       <div className="max-w-7xl mx-auto px-4">
-        <div className="text-center mb-10">
-          <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-3">Restaurants</h2>
-          <p className="text-lg text-gray-600">Search by restaurant, city, cuisine, or food item</p>
+        <div className="text-center mb-4 md:mb-8">
+          <h2 className="text-2xl text-center md:text-5xl font-bold text-gray-900 md:mb-3">Restaurants</h2>
+          <p className="md:text-lg text-center text-gray-600">Search by restaurant, city, cuisine, or food item</p>
         </div>
 
-        <div className="mb-8">
+        <div className="mb-4 md:mb-8">
           <RestaurantsFilters cities={cities || []} cuisines={cuisines || []} />
         </div>
 
         {restaurants && restaurants.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
             {restaurants.map((restaurant) => (
               <RestaurantCard key={restaurant.id} restaurant={restaurant} />
             ))}

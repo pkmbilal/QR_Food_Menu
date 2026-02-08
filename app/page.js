@@ -1,7 +1,7 @@
 // import FavoriteButton from '@/components/FavoriteButton'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
-import RestaurantCard from '@/components/RestaurantCard'
+import RestaurantCard from '@/components/restaurant/RestaurantCard'
 
 import { QrCode, NotebookPen, ArrowLeftRight, Pizza } from 'lucide-react'
 
