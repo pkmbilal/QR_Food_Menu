@@ -16,7 +16,10 @@ export default function MenuItemsMobile({
   onToggleSoldOut,
   onDeleteItem,
 }) {
-  const grouped = useMemo(() => groupItemsByCategory(menuItems, categoryMap), [menuItems, categoryMap]);
+  const grouped = useMemo(
+    () => groupItemsByCategory(menuItems, categoryMap),
+    [menuItems, categoryMap],
+  );
 
   return (
     <div className="md:hidden -mx-4">
@@ -25,7 +28,9 @@ export default function MenuItemsMobile({
           <div className="px-4 py-2">
             <p className="text-[13px] font-semibold text-foreground">
               {catName}{" "}
-              <span className="text-muted-foreground font-medium">({items.length} items)</span>
+              <span className="text-muted-foreground font-medium">
+                ({items.length} items)
+              </span>
             </p>
           </div>
 
@@ -37,11 +42,15 @@ export default function MenuItemsMobile({
               return (
                 <div
                   key={item.id}
-                  className={["rounded-2xl border bg-background shadow-sm", "p-3", soldOut ? "opacity-70" : ""].join(" ")}
+                  className={[
+                    "rounded-2xl border bg-background shadow-sm",
+                    "p-3",
+                    soldOut ? "opacity-70" : "",
+                  ].join(" ")}
                 >
-                  <div className="flex gap-3">
+                  <div className="grid grid-cols-3 gap-3">
                     {/* image */}
-                    <div className="relative h-[78px] w-[78px] flex-shrink-0">
+                    <div className="relative h-[78px] w-[78px] col-span-1">
                       {item.image_url ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
@@ -63,10 +72,12 @@ export default function MenuItemsMobile({
                     </div>
 
                     {/* content */}
-                    <div className="min-w-0 flex-1">
+                    <div className="min-w-0 col-span-2">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
-                          <p className="text-[14px] font-semibold leading-tight truncate">{item.name}</p>
+                          <p className="text-[14px] font-semibold leading-tight truncate">
+                            {item.name}
+                          </p>
 
                           <div className="mt-1 flex flex-wrap gap-1.5">
                             <span
@@ -106,43 +117,59 @@ export default function MenuItemsMobile({
                         </p>
                       ) : null}
 
-                      {/* controls */}
-                      <div className="mt-3 flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2">
-                          <div className="flex items-center gap-2 rounded-full border bg-muted/30 px-3 h-9">
-                            <span className="text-[11px] font-medium">Live</span>
-                            <Switch
-                              checked={available}
-                              onCheckedChange={() => onToggleAvailability(item.id, item.is_available)}
-                            />
-                          </div>
+                    </div>
 
-                          <div className="flex items-center gap-2 rounded-full border bg-muted/30 px-3 h-9">
-                            <span className="text-[11px] font-medium">Sold</span>
-                            <Switch
-                              checked={soldOut}
-                              onCheckedChange={() => onToggleSoldOut(item.id, item.is_sold_out)}
-                            />
-                          </div>
+                    {/* controls */}
+                    <div className="col-span-3">
+                      <div className="flex items-center justify-end gap-2">
+                        <div className="flex items-center gap-2 rounded-full border bg-muted/30 px-2 sm:px-3 h-8 sm:h-9">
+                          <span className="text-[11px] font-medium">
+                            Live
+                          </span>
+                          <Switch
+                            className="scale-90 sm:scale-100"
+                            checked={available}
+                            onCheckedChange={() =>
+                              onToggleAvailability(item.id, item.is_available)
+                            }
+                          />
                         </div>
 
-                        <div className="flex items-center gap-2">
-                          <Button asChild size="icon" variant="secondary" className="h-9 w-9 rounded-full">
-                            <Link href={`/dashboard/owner/menu/${item.id}/edit`} aria-label="Edit item">
-                              <Pencil className="h-4 w-4" />
-                            </Link>
-                          </Button>
-
-                          <Button
-                            size="icon"
-                            variant="destructive"
-                            className="h-9 w-9 rounded-full"
-                            onClick={() => onDeleteItem(item.id)}
-                            aria-label="Delete item"
+                        <div className="flex items-center gap-2 rounded-full border bg-muted/30 px-2 sm:px-3 h-8 sm:h-9">
+                          <span className="text-[11px] font-medium">
+                            Sold
+                          </span>
+                          <Switch
+                            className="scale-90 sm:scale-100"
+                            checked={soldOut}
+                            onCheckedChange={() =>
+                              onToggleSoldOut(item.id, item.is_sold_out)
+                            }
+                          />
+                        </div>
+                        <Button
+                          asChild
+                          size="icon"
+                          variant="secondary"
+                          className="h-8 w-8 sm:h-9 sm:w-9 rounded-full"
+                        >
+                          <Link
+                            href={`/dashboard/owner/menu/${item.id}/edit`}
+                            aria-label="Edit item"
                           >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
+                            <Pencil className="h-4 w-4" />
+                          </Link>
+                        </Button>
+
+                        <Button
+                          size="icon"
+                          variant="destructive"
+                          className="h-8 w-8 sm:h-9 sm:w-9 rounded-full"
+                          onClick={() => onDeleteItem(item.id)}
+                          aria-label="Delete item"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </div>
                   </div>

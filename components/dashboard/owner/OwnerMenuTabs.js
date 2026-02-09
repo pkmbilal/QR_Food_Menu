@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -11,9 +13,11 @@ import MenuItemsTable from "@/components/dashboard/owner/MenuItemsTable";
 import CategoriesPanel from "@/components/dashboard/owner/CategoriesPanel";
 
 export default function OwnerMenuTabs({ restaurant, menuItems, categories, categoryMap, actions }) {
+  const [activeTab, setActiveTab] = useState("items");
+
   return (
-    <Tabs defaultValue="items" className="w-full">
-      <div className="flex items-center justify-between gap-3 flex-wrap">
+    <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+      <div className="flex items-center justify-between md:justify-start gap-3 md:flex-wrap">
         <TabsList className="rounded-full">
           <TabsTrigger value="items" className="rounded-full">
             Menu Items
@@ -24,8 +28,12 @@ export default function OwnerMenuTabs({ restaurant, menuItems, categories, categ
         </TabsList>
 
         <div className="flex items-center gap-2">
-          <AddCategoryDialog restaurantId={restaurant.id} onAdded={actions.reloadCategories} />
-          <AddItemDialog restaurantId={restaurant.id} categories={categories} onAdded={actions.reloadItems} />
+          {activeTab === "categories" && (
+            <AddCategoryDialog restaurantId={restaurant.id} onAdded={actions.reloadCategories} />
+          )}
+          {activeTab === "items" && (
+            <AddItemDialog restaurantId={restaurant.id} categories={categories} onAdded={actions.reloadItems} />
+          )}
         </div>
       </div>
 

@@ -21,8 +21,8 @@ export default function AddCategoryDialog({ restaurantId, onAdded }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="secondary" className="rounded-full cursor-pointer">
-          <Plus className="h-4 w-4 mr-2" />
+        <Button className="rounded-full cursor-pointer">
+          <Plus className="h-4 w-4" />
           Add Category
         </Button>
       </DialogTrigger>
