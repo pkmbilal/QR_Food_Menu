@@ -21,7 +21,7 @@ export default function AddItemDialog({ restaurantId, categories, onAdded }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="rounded-full">
+        <Button className="rounded-full cursor-pointer">
           <Plus className="h-4 w-4 mr-2" />
           Add Item
         </Button>

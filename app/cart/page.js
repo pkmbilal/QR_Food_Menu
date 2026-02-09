@@ -87,10 +87,7 @@ export default function CartPage() {
             <CardContent>
               <div className="flex flex-col sm:flex-row gap-3">
                 <Button asChild className="w-full sm:w-auto">
-                  <Link href="/">Browse restaurants</Link>
-                </Button>
-                <Button asChild variant="outline" className="w-full sm:w-auto">
-                  <Link href="/restaurants">Search food</Link>
+                  <Link href="/restaurants">Browse restaurants</Link>
                 </Button>
               </div>
             </CardContent>
@@ -290,10 +287,6 @@ export default function CartPage() {
                     WhatsApp ordering is unavailable because the restaurant phone number isn’t set.
                   </p>
                 )}
-
-                <p className="text-xs text-muted-foreground">
-                  Tip: Make sure the phone number includes country code (e.g. Saudi Arabia: 966…).
-                </p>
               </CardContent>
             </Card>
           </div>

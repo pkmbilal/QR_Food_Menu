@@ -65,8 +65,8 @@ export default function AddItemForm({ restaurantId, categories, onSuccess }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-2">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="space-y-2 md:col-span-2">
           <Label>Item Name</Label>
           <Input
             value={form.name}
@@ -75,8 +75,44 @@ export default function AddItemForm({ restaurantId, categories, onSuccess }) {
             required
           />
         </div>
+        
+        {/* Mobile Only Block */}
+        <div className="md:hidden grid grid-cols-2 gap-2">
+          <div className="space-y-2">
+          <Label>Price (SAR)</Label>
+          <Input
+            type="number"
+            step="0.01"
+            value={form.price}
+            onChange={(e) => setForm({ ...form, price: e.target.value })}
+            placeholder="12.00"
+            required
+          />
+          </div>
 
-        <div className="space-y-2">
+          <div className="md:hidden space-y-2 md:col-span-1">
+            <Label>Category</Label>
+            <Select value={form.category_id} onValueChange={(v) => setForm({ ...form, category_id: v })}>
+              <SelectTrigger className={'w-full'}>
+                <SelectValue placeholder="Select category" />
+              </SelectTrigger>
+              <SelectContent>
+                {categories.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {categories.length === 0 ? (
+              <p className="text-xs text-muted-foreground">Add a category first to create items.</p>
+            ) : null}
+          </div>
+        </div>
+
+        {/* Price */}
+        <div className="space-y-2 hidden md:block">
           <Label>Price (SAR)</Label>
           <Input
             type="number"
@@ -88,20 +124,10 @@ export default function AddItemForm({ restaurantId, categories, onSuccess }) {
           />
         </div>
 
-        <div className="space-y-2 md:col-span-2">
-          <Label>Description</Label>
-          <Input
-            value={form.description}
-            onChange={(e) => setForm({ ...form, description: e.target.value })}
-            placeholder="Short description…"
-            required
-          />
-        </div>
-
-        <div className="space-y-2">
+        <div className="hidden md:block space-y-2 md:col-span-1">
           <Label>Category</Label>
           <Select value={form.category_id} onValueChange={(v) => setForm({ ...form, category_id: v })}>
-            <SelectTrigger>
+            <SelectTrigger className={'w-full'}>
               <SelectValue placeholder="Select category" />
             </SelectTrigger>
             <SelectContent>
@@ -118,7 +144,37 @@ export default function AddItemForm({ restaurantId, categories, onSuccess }) {
           ) : null}
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-2 col-span-1 md:col-span-2">
+          <Label>Description</Label>
+          <Input
+            value={form.description}
+            onChange={(e) => setForm({ ...form, description: e.target.value })}
+            placeholder="Short description…"
+            required
+          />
+        </div>
+
+        <div className="hidden md:block space-y-2 md:col-span-1">
+          <Label>Category</Label>
+          <Select value={form.category_id} onValueChange={(v) => setForm({ ...form, category_id: v })}>
+            <SelectTrigger className={'w-full'}>
+              <SelectValue placeholder="Select category" />
+            </SelectTrigger>
+            <SelectContent>
+              {categories.map((c) => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {categories.length === 0 ? (
+            <p className="text-xs text-muted-foreground">Add a category first to create items.</p>
+          ) : null}
+        </div>
+
+        <div className="space-y-2 md:col-span-3">
           <Label>Image URL (optional)</Label>
           <Input
             value={form.image_url}
@@ -130,32 +186,32 @@ export default function AddItemForm({ restaurantId, categories, onSuccess }) {
 
       <Separator />
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <Card className="shadow-none">
-          <CardContent className="p-4 flex items-center justify-between">
-            <div>
+      <div className="grid grid-cols-3 gap-3">
+        <Card className="shadow-none !py-4">
+          <CardContent className="p-1 flex flex-col items-center md:justify-center justify-between gap-2">
+            <div className="md:text-center">
               <p className="text-sm font-medium">Available</p>
-              <p className="text-xs text-muted-foreground">Shown to customers</p>
+              <p className="hidden sm:block text-xs text-muted-foreground">Shown to customers</p>
             </div>
             <Switch checked={form.is_available} onCheckedChange={(v) => setForm({ ...form, is_available: v })} />
           </CardContent>
         </Card>
 
-        <Card className="shadow-none">
-          <CardContent className="p-4 flex items-center justify-between">
-            <div>
+        <Card className="shadow-none !py-4">
+          <CardContent className="p-1 flex flex-col items-center justify-between gap-2">
+            <div className="md:text-center">
               <p className="text-sm font-medium">Veg</p>
-              <p className="text-xs text-muted-foreground">{form.is_veg ? "Veg item" : "Non-veg item"}</p>
+              <p className="hidden sm:block text-xs text-muted-foreground">{form.is_veg ? "Veg item" : "Non-veg item"}</p>
             </div>
             <Switch checked={form.is_veg} onCheckedChange={(v) => setForm({ ...form, is_veg: v })} />
           </CardContent>
         </Card>
 
-        <Card className="shadow-none">
-          <CardContent className="p-4 flex items-center justify-between">
-            <div>
+        <Card className="shadow-none !py-4">
+          <CardContent className="p-1 flex flex-col items-center justify-between gap-2">
+            <div className="md:text-center">
               <p className="text-sm font-medium">Sold Out</p>
-              <p className="text-xs text-muted-foreground">Disables add button</p>
+              <p className="hidden sm:blocktext-xs text-muted-foreground">Disables add button</p>
             </div>
             <Switch checked={form.is_sold_out} onCheckedChange={(v) => setForm({ ...form, is_sold_out: v })} />
           </CardContent>

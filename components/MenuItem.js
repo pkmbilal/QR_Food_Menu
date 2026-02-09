@@ -78,7 +78,7 @@ export default function MenuItem({ item, restaurant, categoryMap = {} }) {
             {/* Right content */}
             <div className="flex-1 min-w-0 p-4 flex flex-col">
               {/* Top row: name + price */}
-              <div className="flex items-start justify-between gap-2">
+              <div className="flex items-center justify-between gap-2">
                 <h3 className="font-bold text-gray-900 text-sm leading-tight line-clamp-1">
                   {item.name}
                 </h3>

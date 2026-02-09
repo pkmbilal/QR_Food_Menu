@@ -93,23 +93,23 @@ export default function MenuItemsTable({
                       <TableCell className="font-semibold">SAR {item.price}</TableCell>
 
                       <TableCell className="text-center">
-                        <Switch checked={available} onCheckedChange={() => onToggleAvailability(item.id, item.is_available)} />
+                        <Switch className={'cursor-pointer'} checked={available} onCheckedChange={() => onToggleAvailability(item.id, item.is_available)} />
                       </TableCell>
 
                       <TableCell className="text-center">
-                        <Switch checked={soldOut} onCheckedChange={() => onToggleSoldOut(item.id, item.is_sold_out)} />
+                        <Switch className={'cursor-pointer'} checked={soldOut} onCheckedChange={() => onToggleSoldOut(item.id, item.is_sold_out)} />
                       </TableCell>
 
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">
                           <Button asChild size="sm" variant="secondary" className="rounded-full">
                             <Link href={`/dashboard/owner/menu/${item.id}/edit`}>
-                              <Pencil className="h-4 w-4 mr-2" />
+                              <Pencil className="h-4 w-4 mr-2 cursor-pointer" />
                               Edit
                             </Link>
                           </Button>
 
-                          <Button size="sm" variant="destructive" className="rounded-full" onClick={() => onDeleteItem(item.id)}>
+                          <Button size="sm" variant="destructive" className="rounded-full cursor-pointer" onClick={() => onDeleteItem(item.id)}>
                             <Trash2 className="h-4 w-4 mr-2" />
                             Delete
                           </Button>
