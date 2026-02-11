@@ -157,8 +157,8 @@ export default function Navbar() {
         {/* Desktop Right */}
         <div className="hidden md:flex items-center gap-3">
           {user && profile ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
+            <DropdownMenu >
+              <DropdownMenuTrigger asChild className="cursor-pointer">
                 <Button variant="ghost" className="h-10 gap-2 px-2">
                   <Avatar className="h-8 w-8">
                     <AvatarFallback className="bg-gradient-to-br from-orange-400 to-red-500 text-white">
