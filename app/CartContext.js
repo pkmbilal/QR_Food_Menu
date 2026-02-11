@@ -32,6 +32,10 @@ function normalizeRestaurant(r) {
     slug: r.slug ?? null,
     name: r.name ?? null,
     phone: r.phone ?? null,
+
+    // ✅ include these so cart page can enable buttons correctly
+    pickup_available: r.pickup_available === true,
+    delivery_available: r.delivery_available === true,
   }
 }
 
@@ -73,10 +77,11 @@ export function CartProvider({ children }) {
       return { ok: false, reason: 'DIFFERENT_RESTAURANT' }
     }
 
-    // First item -> set restaurant
-    if (!currentKey) {
-      setRestaurant(incomingRestaurant)
-    }
+    // ✅ Always refresh restaurant info (so pickup/delivery flags stay updated)
+    setRestaurant((prev) => ({
+      ...(prev || {}),
+      ...incomingRestaurant,
+    }))
 
     setCartItems((prevItems) => {
       const existingItem = prevItems.find((i) => i.id === item.id)

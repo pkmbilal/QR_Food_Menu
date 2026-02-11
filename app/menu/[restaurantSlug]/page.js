@@ -1,14 +1,18 @@
-import Link from "next/link"
-import { supabase } from "@/lib/supabase"
+import Link from "next/link";
+import { supabase } from "@/lib/supabase";
 
-import MenuItem from "@/components/MenuItem"
-import CartButton from "@/components/CartButton"
-import FavoriteButton from "@/components/FavoriteButton"
+import MenuItem from "@/components/MenuItem";
+import CartButton from "@/components/CartButton";
+import FavoriteButton from "@/components/FavoriteButton";
+import TableCodePersist from "@/components/TableCodePersist";
 
-import { QrCode, Phone } from "lucide-react"
+import { QrCode, Phone } from "lucide-react";
 
-export default async function MenuPage({ params }) {
-  const { restaurantSlug } = await params
+export default async function MenuPage({ params, searchParams }) {
+  const { restaurantSlug } = await params;
+
+  const sp = await searchParams; // ✅ important in Next 15+
+  const tableCode = (sp?.t ?? "").toString();
 
   const { data: restaurant, error: restaurantError } = await supabase
     .from("restaurants")
@@ -20,7 +24,7 @@ export default async function MenuPage({ params }) {
       )
     `)
     .eq("slug", restaurantSlug)
-    .single()
+    .single();
 
   if (restaurantError || !restaurant) {
     return (
@@ -33,11 +37,9 @@ export default async function MenuPage({ params }) {
           Back to restaurants
         </Link>
       </div>
-    )
+    );
   }
 
-  // ✅ Fetch menu items + include sold out items (NO filter)
-  // ✅ Order: category -> available first -> name
   const { data: items, error: itemsError } = await supabase
     .from("menu_items")
     .select(`
@@ -46,30 +48,28 @@ export default async function MenuPage({ params }) {
     `)
     .eq("restaurant_id", restaurant.id)
     .order("category_id", { ascending: true })
-    .order("is_sold_out", { ascending: true, nullsFirst: true }) // false/null first, true last
-    .order("name", { ascending: true })
+    .order("is_sold_out", { ascending: true, nullsFirst: true })
+    .order("name", { ascending: true });
 
-  if (itemsError) {
-    console.error("menu_items error:", itemsError)
-  }
+  if (itemsError) console.error("menu_items error:", itemsError);
 
-  const menuItems = itemsError ? [] : items || []
+  const menuItems = itemsError ? [] : items || [];
 
-  const cityName = restaurant?.city?.name || ""
+  const cityName = restaurant?.city?.name || "";
 
   const cuisinePills =
     restaurant?.restaurant_cuisines
       ?.map((rc) => rc?.cuisine?.name)
-      .filter(Boolean) || []
+      .filter(Boolean) || [];
 
   const grouped = menuItems.reduce((acc, item) => {
-    const key = item?.categories?.name || "Uncategorized"
-    if (!acc[key]) acc[key] = []
-    acc[key].push(item)
-    return acc
-  }, {})
+    const key = item?.categories?.name || "Uncategorized";
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(item);
+    return acc;
+  }, {});
 
-  const categories = Object.keys(grouped)
+  const categories = Object.keys(grouped);
 
   const Pill = ({ children, className = "" }) => (
     <span
@@ -81,10 +81,13 @@ export default async function MenuPage({ params }) {
     >
       {children}
     </span>
-  )
+  );
 
   return (
     <div className="min-h-screen">
+      {/* ✅ Persist/clear table code based on URL */}
+      <TableCodePersist restaurantSlug={restaurantSlug} />
+
       {/* HEADER */}
       <div className="relative overflow-hidden text-white">
         {restaurant.image_url ? (
@@ -213,7 +216,8 @@ export default async function MenuPage({ params }) {
         )}
       </div>
 
-      <CartButton restaurant={restaurant} />
+      {/* ✅ pass tableCode so dine-in keeps t into cart */}
+      <CartButton restaurant={restaurant} tableCode={tableCode} />
     </div>
-  )
+  );
 }

@@ -78,7 +78,7 @@ export default function AddItemForm({ restaurantId, categories, onSuccess }) {
         
         {/* Mobile Only Block */}
         <div className="md:hidden grid grid-cols-2 gap-2">
-          <div className="space-y-2">
+          <div className="space-y-2 col-span-1">
           <Label>Price (SAR)</Label>
           <Input
             type="number"
@@ -90,7 +90,7 @@ export default function AddItemForm({ restaurantId, categories, onSuccess }) {
           />
           </div>
 
-          <div className="md:hidden space-y-2 md:col-span-1">
+          <div className="space-y-2 col-span-1 md:col-span-1">
             <Label>Category</Label>
             <Select value={form.category_id} onValueChange={(v) => setForm({ ...form, category_id: v })}>
               <SelectTrigger className={'w-full'}>
@@ -154,7 +154,7 @@ export default function AddItemForm({ restaurantId, categories, onSuccess }) {
           />
         </div>
 
-        <div className="hidden md:block space-y-2 md:col-span-1">
+        <div className="hidden space-y-2 md:col-span-1">
           <Label>Category</Label>
           <Select value={form.category_id} onValueChange={(v) => setForm({ ...form, category_id: v })}>
             <SelectTrigger className={'w-full'}>

@@ -3,15 +3,32 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { getCurrentUser, getUserProfile, getUserRestaurant, signOut } from "@/lib/auth";
+import {
+  getCurrentUser,
+  getUserProfile,
+  getUserRestaurant,
+  signOut,
+} from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 
-import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { QrCode, Receipt } from "lucide-react";
 
 import OwnerDashboardHeader from "@/components/dashboard/owner/OwnerDashboardHeader";
 import OwnerStats from "@/components/dashboard/owner/OwnerStats";
 import RestaurantInfoCard from "@/components/dashboard/owner/RestaurantInfoCard";
 import OwnerMenuTabs from "@/components/dashboard/owner/OwnerMenuTabs";
+
+// ✅ NEW components
+import OwnerTablesQrTab from "@/components/dashboard/owner/OwnerTablesQrTab";
+import OwnerOrdersTab from "@/components/dashboard/owner/OwnerOrdersTab";
 
 export default function OwnerDashboardPage() {
   const [user, setUser] = useState(null);
@@ -21,8 +38,16 @@ export default function OwnerDashboardPage() {
   const [menuItems, setMenuItems] = useState([]);
   const [categories, setCategories] = useState([]);
 
-  const [loading, setLoading] = useState(true);
+  // ✅ tables + orders
+  const [tables, setTables] = useState([]);
+  const [orders, setOrders] = useState([]);
+  const [tablesLoading, setTablesLoading] = useState(false);
+  const [ordersLoading, setOrdersLoading] = useState(false);
 
+  const [tableCount, setTableCount] = useState(10);
+  const [generatingTables, setGeneratingTables] = useState(false);
+
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
@@ -48,7 +73,8 @@ export default function OwnerDashboardPage() {
       return;
     }
 
-    const { data: userRestaurant, error: restaurantError } = await getUserRestaurant(currentUser.id);
+    const { data: userRestaurant, error: restaurantError } =
+      await getUserRestaurant(currentUser.id);
 
     if (restaurantError || !userRestaurant) {
       setLoading(false);
@@ -57,8 +83,12 @@ export default function OwnerDashboardPage() {
 
     setRestaurant(userRestaurant);
 
-    await loadCategories(userRestaurant.id);
-    await loadMenuItems(userRestaurant.id);
+    await Promise.all([
+      loadCategories(userRestaurant.id),
+      loadMenuItems(userRestaurant.id),
+      loadTables(userRestaurant.id),
+      loadOrders(userRestaurant.id),
+    ]);
 
     setLoading(false);
   }
@@ -83,17 +113,63 @@ export default function OwnerDashboardPage() {
     if (!error) setCategories(data || []);
   }
 
+  async function loadTables(restaurantId) {
+    setTablesLoading(true);
+    const { data, error } = await supabase
+      .from("restaurant_tables")
+      .select("id, table_number, code, is_active, created_at")
+      .eq("restaurant_id", restaurantId)
+      .order("table_number", { ascending: true });
+
+    if (!error) setTables(data || []);
+    setTablesLoading(false);
+  }
+
+  async function loadOrders(restaurantId) {
+    setOrdersLoading(true);
+    const { data, error } = await supabase
+      .from("orders")
+      .select(
+        `
+        id,
+        created_at,
+        channel,
+        status,
+        total,
+        customer_name,
+        customer_phone,
+        delivery_address,
+        notes,
+        restaurant_tables ( table_number )
+      `
+      )
+      .eq("restaurant_id", restaurantId)
+      .order("created_at", { ascending: false })
+      .limit(50);
+
+    if (!error) setOrders(data || []);
+    setOrdersLoading(false);
+  }
+
   const categoryMap = useMemo(() => {
     return Object.fromEntries((categories || []).map((c) => [c.id, c.name]));
   }, [categories]);
 
   const toggleAvailability = async (itemId, currentStatus) => {
-    const { error } = await supabase.from("menu_items").update({ is_available: !currentStatus }).eq("id", itemId);
+    const { error } = await supabase
+      .from("menu_items")
+      .update({ is_available: !currentStatus })
+      .eq("id", itemId);
+
     if (!error && restaurant?.id) loadMenuItems(restaurant.id);
   };
 
   const toggleSoldOut = async (itemId, currentStatus) => {
-    const { error } = await supabase.from("menu_items").update({ is_sold_out: !currentStatus }).eq("id", itemId);
+    const { error } = await supabase
+      .from("menu_items")
+      .update({ is_sold_out: !currentStatus })
+      .eq("id", itemId);
+
     if (!error && restaurant?.id) loadMenuItems(restaurant.id);
   };
 
@@ -107,7 +183,10 @@ export default function OwnerDashboardPage() {
     const clean = newName.trim();
     if (!clean) return { ok: false, message: "Name cannot be empty" };
 
-    const { error } = await supabase.from("categories").update({ name: clean }).eq("id", categoryId);
+    const { error } = await supabase
+      .from("categories")
+      .update({ name: clean })
+      .eq("id", categoryId);
 
     if (error) {
       const msg = error.message?.toLowerCase().includes("duplicate")
@@ -136,6 +215,44 @@ export default function OwnerDashboardPage() {
   const handleLogout = async () => {
     await signOut();
     router.push("/auth/login");
+  };
+
+  const handleGenerateTables = async () => {
+    if (!restaurant?.id) return;
+
+    const n = Number(tableCount || 0);
+    if (!n || n < 1 || n > 200) {
+      alert("Please enter a valid number of tables (1 to 200).");
+      return;
+    }
+
+    setGeneratingTables(true);
+    try {
+      const { data: sess } = await supabase.auth.getSession();
+      const token = sess?.session?.access_token;
+
+      const res = await fetch(`/api/restaurants/${restaurant.id}/tables/generate`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ count: n }),
+      });
+
+      const json = await res.json();
+      if (!res.ok) {
+        alert(json?.error || "Failed to generate tables.");
+        return;
+      }
+
+      await loadTables(restaurant.id);
+      alert(`✅ Tables generated (created: ${json.created ?? 0})`);
+    } catch (e) {
+      alert(e?.message || "Server error generating tables.");
+    } finally {
+      setGeneratingTables(false);
+    }
   };
 
   if (loading) {
@@ -168,9 +285,9 @@ export default function OwnerDashboardPage() {
 
       <div className="max-w-7xl mx-auto px-4 py-5 space-y-5">
         <OwnerStats menuItems={menuItems} />
-
         <RestaurantInfoCard restaurant={restaurant} />
 
+        {/* ✅ your existing Menu/Categories tabs unchanged */}
         <OwnerMenuTabs
           restaurant={restaurant}
           menuItems={menuItems}
@@ -186,6 +303,31 @@ export default function OwnerDashboardPage() {
             reloadCategories: () => loadCategories(restaurant.id),
           }}
         />
+
+        {/* ✅ Tables & Orders tabs */}
+        <Tabs defaultValue="tables" className="w-full">
+          <div className="flex items-center justify-between gap-3">
+            <TabsList className="w-fit">
+              <TabsTrigger value="tables" className="gap-2">
+                <QrCode className="h-4 w-4" />
+                Tables & QR
+              </TabsTrigger>
+            </TabsList>
+          </div>
+
+          <TabsContent value="tables" className="mt-4">
+            <OwnerTablesQrTab
+              restaurant={restaurant}
+              tables={tables}
+              tablesLoading={tablesLoading}
+              tableCount={tableCount}
+              setTableCount={setTableCount}
+              generatingTables={generatingTables}
+              onGenerateTables={handleGenerateTables}
+              onRefreshTables={() => loadTables(restaurant.id)}
+            />
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
