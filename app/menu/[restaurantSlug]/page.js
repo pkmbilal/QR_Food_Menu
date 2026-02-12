@@ -144,13 +144,7 @@ export default async function MenuPage({ params, searchParams }) {
                 <div className="mt-5 flex flex-wrap items-center gap-3">
                   <FavoriteButton restaurantId={restaurant.id} />
 
-                  <Link
-                    href={`/qr/${restaurant.slug}`}
-                    className="w-fit rounded-xl bg-white/95 text-green-700 px-4 py-2 font-semibold transition hover:bg-white hover:shadow-xl flex items-center gap-2"
-                  >
-                    <QrCode size={16} />
-                    Get QR Code
-                  </Link>
+                  
 
                   {restaurant.phone && (
                     <a
