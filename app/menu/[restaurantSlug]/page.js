@@ -1,11 +1,10 @@
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 
-import MenuItem from "@/components/MenuItem";
+import MenuClient from "@/components/MenuClient";
 import CartButton from "@/components/CartButton";
 import FavoriteButton from "@/components/FavoriteButton";
 import TableCodePersist from "@/components/TableCodePersist";
-
 import { QrCode, Phone } from "lucide-react";
 
 export default async function MenuPage({ params, searchParams }) {
@@ -61,15 +60,6 @@ export default async function MenuPage({ params, searchParams }) {
     restaurant?.restaurant_cuisines
       ?.map((rc) => rc?.cuisine?.name)
       .filter(Boolean) || [];
-
-  const grouped = menuItems.reduce((acc, item) => {
-    const key = item?.categories?.name || "Uncategorized";
-    if (!acc[key]) acc[key] = [];
-    acc[key].push(item);
-    return acc;
-  }, {});
-
-  const categories = Object.keys(grouped);
 
   const Pill = ({ children, className = "" }) => (
     <span
@@ -182,38 +172,15 @@ export default async function MenuPage({ params, searchParams }) {
 
       {/* MAIN */}
       <div className="max-w-7xl mx-auto px-4 py-8">
-        {menuItems.length === 0 ? (
-          <div className="text-center py-16">
-            <h2 className="text-2xl font-bold">No menu items yet</h2>
-            <p className="text-muted-foreground mt-2">
-              This restaurant hasn’t added items.
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-10">
-            {categories.map((cat) => (
-              <section key={cat} className="space-y-4">
-                <div className="flex items-end justify-between gap-4">
-                  <h2 className="text-xl md:text-2xl font-bold">{cat}</h2>
-                  <span className="text-sm text-muted-foreground">
-                    {grouped[cat].length} items
-                  </span>
-                </div>
-
-                <div className="grid gap-1 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                  {grouped[cat].map((item) => (
-                    <MenuItem
-                      key={item.id}
-                      item={item}
-                      restaurant={restaurant}
-                      categoryMap={{}}
-                    />
-                  ))}
-                </div>
-              </section>
-            ))}
-          </div>
-        )}
+        <MenuClient
+          items={menuItems}
+          categories={[
+            ...new Set(
+              menuItems.map((item) => item?.categories?.name || "Uncategorized")
+            ),
+          ].sort()}
+          restaurant={restaurant}
+        />
       </div>
 
       {/* ✅ pass tableCode so dine-in keeps t into cart */}

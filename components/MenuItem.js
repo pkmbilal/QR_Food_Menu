@@ -43,7 +43,7 @@ export default function MenuItem({ item, restaurant, categoryMap = {} }) {
       <div className="sm:hidden">
         <div
           className={cn(
-            "relative bg-white rounded-2xl mb-3 shadow-sm border border-gray-100 transition-all overflow-hidden",
+            "relative bg-white rounded-2xl shadow-sm border border-gray-100 transition-all overflow-hidden",
             soldOut ? "opacity-60" : "hover:border-gray-200"
           )}
         >
