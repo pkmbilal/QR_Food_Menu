@@ -3,9 +3,31 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Pencil, Trash2, Ban, CheckCircle, X } from 'lucide-react'
+import { Pencil, Trash2, Ban, CheckCircle, X, TriangleAlert } from 'lucide-react'
 import { getCurrentUser, getUserProfile } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
+
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 
 export default function AdminDashboard() {
   const [user, setUser] = useState(null)
@@ -31,6 +53,21 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('pending') // pending, all, users, restaurants, cities, cuisines
   const router = useRouter()
+
+  // ✅ Dialog States
+  const [infoDialog, setInfoDialog] = useState({ open: false, title: '', description: '', isError: false })
+  const [confirmDialog, setConfirmDialog] = useState({ open: false, title: '', description: '', action: null })
+  const [inputDialog, setInputDialog] = useState({
+    open: false,
+    title: '',
+    description: '',
+    value: '',
+    placeholder: '',
+    confirmText: 'Confirm',
+    matchValue: null,
+    action: null,
+  })
+  const [rejectDialog, setRejectDialog] = useState({ open: false, request: null, reason: '' })
 
   useEffect(() => {
     loadAdminData()
@@ -145,105 +182,131 @@ export default function AdminDashboard() {
 
   /* ---------------- Users actions ---------------- */
   const handleChangeRole = async (userId, newRole) => {
-    if (!confirm(`Change user role to ${newRole}?`)) return
-
-    const { error } = await supabase.from('user_profiles').update({ role: newRole }).eq('id', userId)
-
-    if (error) return alert('Error changing role: ' + error.message)
-
-    alert(`✅ User role changed to ${newRole}`)
-    loadUsers()
+    setConfirmDialog({
+      open: true,
+      title: 'Change User Role',
+      description: `Are you sure you want to change this user's role to ${newRole}?`,
+      action: async () => {
+        const { error } = await supabase.from('user_profiles').update({ role: newRole }).eq('id', userId)
+        if (error) {
+          setInfoDialog({ open: true, title: 'Error', description: error.message, isError: true })
+        } else {
+          setInfoDialog({ open: true, title: 'Success', description: `User role changed to ${newRole}`, isError: false })
+          loadUsers()
+        }
+      },
+    })
   }
 
   const handleToggleUserStatus = async (userId, currentStatus) => {
     const action = currentStatus ? 'disable' : 'enable'
-    if (!confirm(`Are you sure you want to ${action} this user?`)) return
+    setConfirmDialog({
+      open: true,
+      title: `${action.charAt(0).toUpperCase() + action.slice(1)} User`,
+      description: `Are you sure you want to ${action} this user?`,
+      action: async () => {
+        const { error } = await supabase
+          .from('user_profiles')
+          .update({ is_active: !currentStatus })
+          .eq('id', userId)
 
-    const { error } = await supabase
-      .from('user_profiles')
-      .update({ is_active: !currentStatus })
-      .eq('id', userId)
-
-    if (error) return alert('Error updating user status: ' + error.message)
-
-    alert(`✅ User ${action}d successfully`)
-    loadUsers()
+        if (error) {
+          setInfoDialog({ open: true, title: 'Error', description: error.message, isError: true })
+        } else {
+          setInfoDialog({ open: true, title: 'Success', description: `User ${action}d successfully`, isError: false })
+          loadUsers()
+        }
+      },
+    })
   }
 
   const handleDeleteUser = async (userId, userName) => {
-    const confirmText = prompt(
-      `⚠️ WARNING: This will permanently delete the user and all their data!\n\n` +
-        `Type "${userName || 'DELETE'}" to confirm:`
-    )
-
-    if (confirmText !== (userName || 'DELETE')) return alert('Deletion cancelled')
-
-    const { error } = await supabase.from('user_profiles').delete().eq('id', userId)
-    if (error) return alert('Error deleting user: ' + error.message)
-
-    alert('✅ User deleted successfully')
-    loadUsers()
+    setInputDialog({
+      open: true,
+      title: 'Delete User',
+      description: `This will permanently delete the user and all their data. Type "${userName || 'DELETE'}" to confirm.`,
+      placeholder: userName || 'DELETE',
+      matchValue: userName || 'DELETE',
+      confirmText: 'Delete User',
+      action: async () => {
+        const { error } = await supabase.from('user_profiles').delete().eq('id', userId)
+        if (error) {
+          setInfoDialog({ open: true, title: 'Error', description: error.message, isError: true })
+        } else {
+          setInfoDialog({ open: true, title: 'Success', description: 'User deleted successfully', isError: false })
+          loadUsers()
+        }
+      },
+    })
   }
 
   /* ---------------- Requests actions ---------------- */
   const handleApprove = async (request) => {
-    if (!confirm(`Approve ${request.restaurant_name}?`)) return
+    setConfirmDialog({
+      open: true,
+      title: 'Approve Request',
+      description: `Approve ${request.restaurant_name}? This will create the restaurant and promote the user to Owner.`,
+      action: async () => {
+        try {
+          const slug = request.restaurant_name
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-|-$/g, '')
 
-    try {
-      const slug = request.restaurant_name
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-|-$/g, '')
+          const { data: restaurant, error: restaurantError } = await supabase
+            .from('restaurants')
+            .insert([
+              {
+                name: request.restaurant_name,
+                slug,
+                phone: request.phone,
+                address: request.address,
+                owner_id: request.user_id,
+                owner_email: request.user_profiles?.email,
+                is_active: true,
+                approved_at: new Date().toISOString(),
+              },
+            ])
+            .select()
+            .single()
 
-      const { data: restaurant, error: restaurantError } = await supabase
-        .from('restaurants')
-        .insert([
-          {
-            name: request.restaurant_name,
-            slug,
-            phone: request.phone,
-            address: request.address,
-            owner_id: request.user_id,
-            owner_email: request.user_profiles?.email,
-            is_active: true,
-            approved_at: new Date().toISOString(),
-            // city_id: request.city_id,
-          },
-        ])
-        .select()
-        .single()
+          if (restaurantError) throw new Error('Error creating restaurant: ' + restaurantError.message)
+          if (!restaurant) throw new Error('Failed to create restaurant')
 
-      if (restaurantError) return alert('Error creating restaurant: ' + restaurantError.message)
-      if (!restaurant) return alert('Failed to create restaurant')
+          const { error: roleError } = await supabase
+            .from('user_profiles')
+            .update({ role: 'owner' })
+            .eq('id', request.user_id)
 
-      const { error: roleError } = await supabase
-        .from('user_profiles')
-        .update({ role: 'owner' })
-        .eq('id', request.user_id)
+          if (roleError) throw new Error('Error updating user role: ' + roleError.message)
 
-      if (roleError) return alert('Error updating user role: ' + roleError.message)
+          const { error: requestError } = await supabase
+            .from('restaurant_requests')
+            .update({
+              status: 'approved',
+              reviewed_at: new Date().toISOString(),
+              reviewed_by: user.id,
+            })
+            .eq('id', request.id)
 
-      const { error: requestError } = await supabase
-        .from('restaurant_requests')
-        .update({
-          status: 'approved',
-          reviewed_at: new Date().toISOString(),
-          reviewed_by: user.id,
-        })
-        .eq('id', request.id)
+          if (requestError) throw new Error('Error updating request: ' + requestError.message)
 
-      if (requestError) return alert('Error updating request: ' + requestError.message)
-
-      alert('✅ Request approved! Restaurant created and user promoted to owner.')
-      loadAdminData()
-    } catch (err) {
-      alert('Error: ' + err.message)
-    }
+          setInfoDialog({ open: true, title: 'Success', description: 'Request approved! Restaurant created.', isError: false })
+          loadAdminData()
+        } catch (err) {
+          setInfoDialog({ open: true, title: 'Error', description: err.message, isError: true })
+        }
+      },
+    })
   }
 
-  const handleReject = async (request) => {
-    const reason = prompt('Enter rejection reason:')
-    if (!reason) return
+  const handleReject = (request) => {
+    setRejectDialog({ open: true, request, reason: '' })
+  }
+
+  const confirmReject = async () => {
+    if (!rejectDialog.reason) return
+    const { request, reason } = rejectDialog
 
     const { error } = await supabase
       .from('restaurant_requests')
@@ -255,10 +318,13 @@ export default function AdminDashboard() {
       })
       .eq('id', request.id)
 
-    if (error) return alert('Error rejecting request: ' + error.message)
-
-    alert('Request rejected.')
-    loadAdminData()
+    if (error) {
+      setInfoDialog({ open: true, title: 'Error', description: error.message, isError: true })
+    } else {
+      setInfoDialog({ open: true, title: 'Success', description: 'Request rejected.', isError: false })
+      loadAdminData()
+    }
+    setRejectDialog({ open: false, request: null, reason: '' })
   }
 
   /* ---------------- Cities actions ---------------- */
@@ -306,26 +372,42 @@ export default function AdminDashboard() {
 
   const handleToggleCity = async (city) => {
     const action = city.is_active ? 'disable' : 'enable'
-    if (!confirm(`Are you sure you want to ${action} ${city.name}?`)) return
+    setConfirmDialog({
+      open: true,
+      title: `${action.charAt(0).toUpperCase() + action.slice(1)} City`,
+      description: `Are you sure you want to ${action} ${city.name}?`,
+      action: async () => {
+        const { error } = await supabase
+          .from('cities')
+          .update({ is_active: !city.is_active })
+          .eq('id', city.id)
 
-    const { error } = await supabase
-      .from('cities')
-      .update({ is_active: !city.is_active })
-      .eq('id', city.id)
-
-    if (error) return alert('Error updating city: ' + error.message)
-
-    loadCities()
+        if (error) {
+          setInfoDialog({ open: true, title: 'Error', description: error.message, isError: true })
+        } else {
+          loadCities()
+        }
+      },
+    })
   }
 
   const handleDeleteCity = async (city) => {
-    const confirmText = prompt(`Type "${city.name}" to delete this city:`)
-    if (confirmText !== city.name) return
-
-    const { error } = await supabase.from('cities').delete().eq('id', city.id)
-    if (error) return alert('Error deleting city: ' + error.message)
-
-    loadCities()
+    setInputDialog({
+      open: true,
+      title: 'Delete City',
+      description: `Type "${city.name}" to delete this city:`,
+      placeholder: city.name,
+      matchValue: city.name,
+      confirmText: 'Delete',
+      action: async () => {
+        const { error } = await supabase.from('cities').delete().eq('id', city.id)
+        if (error) {
+          setInfoDialog({ open: true, title: 'Error', description: error.message, isError: true })
+        } else {
+          loadCities()
+        }
+      },
+    })
   }
 
   /* ---------------- Cuisines actions ---------------- */
@@ -373,26 +455,85 @@ export default function AdminDashboard() {
 
   const handleToggleCuisine = async (cuisine) => {
     const action = cuisine.is_active ? 'disable' : 'enable'
-    if (!confirm(`Are you sure you want to ${action} ${cuisine.name}?`)) return
+    setConfirmDialog({
+      open: true,
+      title: `${action.charAt(0).toUpperCase() + action.slice(1)} Cuisine`,
+      description: `Are you sure you want to ${action} ${cuisine.name}?`,
+      action: async () => {
+        const { error } = await supabase
+          .from('cuisines')
+          .update({ is_active: !cuisine.is_active })
+          .eq('id', cuisine.id)
 
-    const { error } = await supabase
-      .from('cuisines')
-      .update({ is_active: !cuisine.is_active })
-      .eq('id', cuisine.id)
-
-    if (error) return alert('Error updating cuisine: ' + error.message)
-
-    loadCuisines()
+        if (error) {
+          setInfoDialog({ open: true, title: 'Error', description: error.message, isError: true })
+        } else {
+          loadCuisines()
+        }
+      },
+    })
   }
 
   const handleDeleteCuisine = async (cuisine) => {
-    const confirmText = prompt(`Type "${cuisine.name}" to delete this cuisine:`)
-    if (confirmText !== cuisine.name) return
+    setInputDialog({
+      open: true,
+      title: 'Delete Cuisine',
+      description: `Type "${cuisine.name}" to delete this cuisine:`,
+      placeholder: cuisine.name,
+      matchValue: cuisine.name,
+      confirmText: 'Delete',
+      action: async () => {
+        const { error } = await supabase.from('cuisines').delete().eq('id', cuisine.id)
+        if (error) {
+          setInfoDialog({ open: true, title: 'Error', description: error.message, isError: true })
+        } else {
+          loadCuisines()
+        }
+      },
+    })
+  }
 
-    const { error } = await supabase.from('cuisines').delete().eq('id', cuisine.id)
-    if (error) return alert('Error deleting cuisine: ' + error.message)
+  /* ---------------- Restaurant Actions ---------------- */
+  const handleToggleRestaurant = async (restaurant) => {
+    const action = restaurant.is_active ? 'disable' : 'enable'
+    setConfirmDialog({
+      open: true,
+      title: `${action.charAt(0).toUpperCase() + action.slice(1)} Restaurant`,
+      description: `Are you sure you want to ${action} ${restaurant.name}?`,
+      action: async () => {
+        const { error } = await supabase
+          .from('restaurants')
+          .update({ is_active: !restaurant.is_active })
+          .eq('id', restaurant.id)
 
-    loadCuisines()
+        if (error) {
+          setInfoDialog({ open: true, title: 'Error', description: error.message, isError: true })
+        } else {
+          setInfoDialog({ open: true, title: 'Success', description: `Restaurant ${action}d successfully`, isError: false })
+          loadRestaurants()
+        }
+      },
+    })
+  }
+
+  const handleDeleteRestaurant = async (restaurant) => {
+    setInputDialog({
+      open: true,
+      title: 'Delete Restaurant',
+      description: `This will permanently delete "${restaurant.name}" and all its menu items! Type "${restaurant.name}" to confirm:`,
+      placeholder: restaurant.name,
+      matchValue: restaurant.name,
+      confirmText: 'Delete',
+      action: async () => {
+        const { error } = await supabase.from('restaurants').delete().eq('id', restaurant.id)
+        if (error) {
+          setInfoDialog({ open: true, title: 'Error', description: error.message, isError: true })
+        } else {
+          setInfoDialog({ open: true, title: 'Success', description: 'Restaurant deleted successfully', isError: false })
+          loadRestaurants()
+        }
+      },
+    })
   }
 
   if (loading) {
@@ -466,11 +607,10 @@ export default function AdminDashboard() {
                 <button
                   key={key}
                   onClick={() => setActiveTab(key)}
-                  className={`py-4 px-2 border-b-2 font-semibold transition-colors ${
-                    activeTab === key
+                  className={`py-4 px-2 border-b-2 font-semibold transition-colors ${activeTab === key
                       ? 'border-primary text-green-600'
                       : 'border-transparent text-gray-600 hover:text-gray-800'
-                  }`}
+                    }`}
                 >
                   {label}
                 </button>
@@ -572,13 +712,12 @@ export default function AdminDashboard() {
                       </div>
 
                       <span
-                        className={`text-xs px-3 py-1 rounded-full font-semibold ${
-                          request.status === 'pending'
+                        className={`text-xs px-3 py-1 rounded-full font-semibold ${request.status === 'pending'
                             ? 'bg-yellow-100 text-yellow-800'
                             : request.status === 'approved'
                               ? 'bg-green-100 text-green-800'
                               : 'bg-red-100 text-red-800'
-                        }`}
+                          }`}
                       >
                         {request.status}
                       </span>
@@ -624,13 +763,12 @@ export default function AdminDashboard() {
 
                       <div className="flex flex-col gap-2 items-end">
                         <span
-                          className={`text-xs px-3 py-1 rounded-full font-semibold ${
-                            userItem.role === 'admin'
+                          className={`text-xs px-3 py-1 rounded-full font-semibold ${userItem.role === 'admin'
                               ? 'bg-purple-100 text-purple-800'
                               : userItem.role === 'owner'
                                 ? 'bg-blue-100 text-blue-800'
                                 : 'bg-gray-100 text-gray-800'
-                          }`}
+                            }`}
                         >
                           {userItem.role}
                         </span>
@@ -651,11 +789,10 @@ export default function AdminDashboard() {
 
                       <button
                         onClick={() => handleToggleUserStatus(userItem.id, userItem.is_active)}
-                        className={`px-4 py-2 rounded-lg font-semibold text-sm transition-colors ${
-                          userItem.is_active
+                        className={`px-4 py-2 rounded-lg font-semibold text-sm transition-colors ${userItem.is_active
                             ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
                             : 'bg-green-100 text-green-700 hover:bg-green-200'
-                        }`}
+                          }`}
                         disabled={userItem.id === user.id}
                       >
                         {userItem.is_active ? 'Disable User' : 'Enable User'}
@@ -690,7 +827,13 @@ export default function AdminDashboard() {
                   </div>
                 ) : (
                   allRestaurants.map((restaurant) => (
-                    <RestaurantCard key={restaurant.id} restaurant={restaurant} onUpdate={loadRestaurants} />
+                    <RestaurantCard
+                      key={restaurant.id}
+                      restaurant={restaurant}
+                      onUpdate={loadRestaurants}
+                      onToggle={handleToggleRestaurant}
+                      onDelete={handleDeleteRestaurant}
+                    />
                   ))
                 )}
               </div>
@@ -796,6 +939,116 @@ export default function AdminDashboard() {
           </div>
         </div>
       </div>
+
+      {/* ✅ Generic Info/Error Dialog */}
+      <AlertDialog open={infoDialog.open} onOpenChange={(open) => setInfoDialog(prev => ({ ...prev, open }))}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className={`flex items-center gap-2 ${infoDialog.isError ? 'text-destructive' : 'text-green-600'}`}>
+              {infoDialog.isError ? <TriangleAlert className="h-5 w-5" /> : <CheckCircle className="h-5 w-5" />}
+              {infoDialog.title}
+            </AlertDialogTitle>
+            <AlertDialogDescription>{infoDialog.description}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setInfoDialog({ ...infoDialog, open: false })}>
+              Okay
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* ✅ Generic Confirm Dialog */}
+      <AlertDialog open={confirmDialog.open} onOpenChange={(open) => setConfirmDialog(prev => ({ ...prev, open }))}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{confirmDialog.title}</AlertDialogTitle>
+            <AlertDialogDescription>{confirmDialog.description}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-primary hover:bg-green-600"
+              onClick={() => {
+                if (confirmDialog.action) confirmDialog.action()
+                setConfirmDialog({ ...confirmDialog, open: false })
+              }}
+            >
+              Confirm
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* ✅ Generic Input Dialog (for delete confirmations) */}
+      <Dialog open={inputDialog.open} onOpenChange={(open) => setInputDialog(prev => ({ ...prev, open }))}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <TriangleAlert className="h-5 w-5" />
+              {inputDialog.title}
+            </DialogTitle>
+            <DialogDescription>{inputDialog.description}</DialogDescription>
+          </DialogHeader>
+
+          <div className="py-2">
+            <Input
+              value={inputDialog.value}
+              placeholder={inputDialog.placeholder}
+              onChange={(e) => setInputDialog({ ...inputDialog, value: e.target.value })}
+            />
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setInputDialog({ ...inputDialog, open: false })}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-destructive hover:bg-destructive/90"
+              disabled={inputDialog.matchValue && inputDialog.value !== inputDialog.matchValue}
+              onClick={() => {
+                if (inputDialog.action) inputDialog.action()
+                setInputDialog({ ...inputDialog, open: false })
+              }}
+            >
+              {inputDialog.confirmText}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ✅ Reject Request Dialog */}
+      <Dialog open={rejectDialog.open} onOpenChange={(open) => setRejectDialog(prev => ({ ...prev, open }))}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-red-600">Reject Request</DialogTitle>
+            <DialogDescription>
+              Please provide a reason for rejecting this request.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-2">
+            <Textarea
+              value={rejectDialog.reason}
+              onChange={(e) => setRejectDialog({ ...rejectDialog, reason: e.target.value })}
+              placeholder="Reason for rejection..."
+            />
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setRejectDialog({ ...rejectDialog, open: false })}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={!rejectDialog.reason.trim()}
+              onClick={confirmReject}
+            >
+              Reject
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
@@ -825,9 +1078,8 @@ function CityPill({ city, onRename, onToggle, onDelete }) {
 
   return (
     <div
-      className={`flex items-center gap-2 px-3 py-1 rounded-full border ${
-        city.is_active ? 'bg-gray-100 border-gray-200' : 'bg-red-50 border-red-200'
-      }`}
+      className={`flex items-center gap-2 px-3 py-1 rounded-full border ${city.is_active ? 'bg-gray-100 border-gray-200' : 'bg-red-50 border-red-200'
+        }`}
     >
       {!editing ? (
         <>
@@ -847,11 +1099,10 @@ function CityPill({ city, onRename, onToggle, onDelete }) {
           <button
             type="button"
             onClick={() => onToggle(city)}
-            className={`p-1 rounded-full transition cursor-pointer ${
-              city.is_active
+            className={`p-1 rounded-full transition cursor-pointer ${city.is_active
                 ? 'text-yellow-700 hover:text-yellow-900 hover:bg-white/70'
                 : 'text-green-700 hover:text-green-900 hover:bg-white/70'
-            }`}
+              }`}
             title={city.is_active ? 'Disable' : 'Enable'}
           >
             {city.is_active ? <Ban className="h-4 w-4" /> : <CheckCircle className="h-4 w-4" />}
@@ -930,9 +1181,8 @@ function CuisinePill({ cuisine, onRename, onToggle, onDelete }) {
 
   return (
     <div
-      className={`flex items-center gap-2 px-3 py-1 rounded-full border ${
-        cuisine.is_active ? 'bg-gray-100 border-gray-200' : 'bg-red-50 border-red-200'
-      }`}
+      className={`flex items-center gap-2 px-3 py-1 rounded-full border ${cuisine.is_active ? 'bg-gray-100 border-gray-200' : 'bg-red-50 border-red-200'
+        }`}
     >
       {!editing ? (
         <>
@@ -954,11 +1204,10 @@ function CuisinePill({ cuisine, onRename, onToggle, onDelete }) {
           <button
             type="button"
             onClick={() => onToggle(cuisine)}
-            className={`p-1 rounded-full transition cursor-pointer ${
-              cuisine.is_active
+            className={`p-1 rounded-full transition cursor-pointer ${cuisine.is_active
                 ? 'text-yellow-700 hover:text-yellow-900 hover:bg-white/70'
                 : 'text-green-700 hover:text-green-900 hover:bg-white/70'
-            }`}
+              }`}
             title={cuisine.is_active ? 'Disable' : 'Enable'}
           >
             {cuisine.is_active ? <Ban className="h-4 w-4" /> : <CheckCircle className="h-4 w-4" />}
@@ -1013,9 +1262,11 @@ function CuisinePill({ cuisine, onRename, onToggle, onDelete }) {
 }
 
 /* ---------------- Restaurant Card ---------------- */
-function RestaurantCard({ restaurant, onUpdate }) {
+function RestaurantCard({ restaurant, onUpdate, onToggle, onDelete }) {
   const [menuItemCount, setMenuItemCount] = useState(0)
-  const [loading, setLoading] = useState(false)
+
+  // ✅ Removed local state for loading/error that was tied to alerts
+  // Now triggers parent dialogs
 
   useEffect(() => {
     loadMenuItemCount()
@@ -1029,56 +1280,6 @@ function RestaurantCard({ restaurant, onUpdate }) {
       .eq('restaurant_id', restaurant.id)
 
     setMenuItemCount(count || 0)
-  }
-
-  const handleToggleStatus = async () => {
-    const action = restaurant.is_active ? 'disable' : 'enable'
-    if (!confirm(`Are you sure you want to ${action} ${restaurant.name}?`)) return
-
-    setLoading(true)
-
-    try {
-      const { error } = await supabase
-        .from('restaurants')
-        .update({ is_active: !restaurant.is_active })
-        .eq('id', restaurant.id)
-        .select()
-
-      if (error) {
-        alert('Error updating restaurant: ' + error.message)
-        return
-      }
-
-      alert(`✅ Restaurant ${action}d successfully`)
-      await onUpdate()
-    } catch (err) {
-      alert('Error updating restaurant. Please try again.')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleDelete = async () => {
-    const confirmText = prompt(
-      `⚠️ WARNING: This will permanently delete "${restaurant.name}" and all its menu items!\n\n` +
-        `Type "${restaurant.name}" to confirm:`
-    )
-
-    if (confirmText !== restaurant.name) {
-      alert('Deletion cancelled')
-      return
-    }
-
-    setLoading(true)
-    const { error } = await supabase.from('restaurants').delete().eq('id', restaurant.id)
-
-    if (error) {
-      alert('Error deleting restaurant: ' + error.message)
-    } else {
-      alert('✅ Restaurant deleted successfully')
-      onUpdate()
-    }
-    setLoading(false)
   }
 
   return (
@@ -1172,21 +1373,18 @@ function RestaurantCard({ restaurant, onUpdate }) {
         </Link>
 
         <button
-          onClick={handleToggleStatus}
-          disabled={loading}
-          className={`px-4 py-2 rounded-lg font-semibold text-sm transition-colors ${
-            restaurant.is_active
+          onClick={() => onToggle(restaurant)}
+          className={`px-4 py-2 rounded-lg font-semibold text-sm transition-colors ${restaurant.is_active
               ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
               : 'bg-green-100 text-green-700 hover:bg-green-200'
-          } disabled:opacity-50`}
+            }`}
         >
           {restaurant.is_active ? 'Disable Restaurant' : 'Enable Restaurant'}
         </button>
 
         <button
-          onClick={handleDelete}
-          disabled={loading}
-          className="px-4 py-2 bg-red-100 text-red-700 rounded-lg font-semibold text-sm hover:bg-red-200 transition-colors disabled:opacity-50"
+          onClick={() => onDelete(restaurant)}
+          className="px-4 py-2 bg-red-100 text-red-700 rounded-lg font-semibold text-sm hover:bg-red-200 transition-colors"
         >
           Delete Restaurant
         </button>

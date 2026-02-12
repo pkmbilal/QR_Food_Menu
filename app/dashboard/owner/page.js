@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/card";
 
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { QrCode, Receipt } from "lucide-react";
+import { QrCode, Receipt, TriangleAlert, Trash2, CheckCircle } from "lucide-react";
 
 import OwnerDashboardHeader from "@/components/dashboard/owner/OwnerDashboardHeader";
 import OwnerStats from "@/components/dashboard/owner/OwnerStats";
@@ -29,6 +29,18 @@ import OwnerMenuTabs from "@/components/dashboard/owner/OwnerMenuTabs";
 // ✅ NEW components
 import OwnerTablesQrTab from "@/components/dashboard/owner/OwnerTablesQrTab";
 import OwnerOrdersTab from "@/components/dashboard/owner/OwnerOrdersTab";
+
+// ✅ Shadcn Dialogs
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function OwnerDashboardPage() {
   const [user, setUser] = useState(null);
@@ -49,6 +61,16 @@ export default function OwnerDashboardPage() {
 
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+
+  // ✅ Dialog States
+  const [deleteItemOpen, setDeleteItemOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState(null);
+
+  const [deleteCategoryOpen, setDeleteCategoryOpen] = useState(false);
+  const [categoryToDelete, setCategoryToDelete] = useState(null);
+
+  const [infoDialogOpen, setInfoDialogOpen] = useState(false);
+  const [infoDialogConfig, setInfoDialogConfig] = useState({ title: "", description: "", isError: false });
 
   useEffect(() => {
     loadOwnerData();
@@ -173,10 +195,19 @@ export default function OwnerDashboardPage() {
     if (!error && restaurant?.id) loadMenuItems(restaurant.id);
   };
 
-  const deleteItem = async (itemId) => {
-    if (!confirm("Are you sure you want to delete this item?")) return;
-    const { error } = await supabase.from("menu_items").delete().eq("id", itemId);
+  // ✅ Trigger Delete Item Dialog
+  const deleteItem = (itemId) => {
+    setItemToDelete(itemId);
+    setDeleteItemOpen(true);
+  };
+
+  // ✅ Confirm Delete Item
+  const confirmDeleteItem = async () => {
+    if (!itemToDelete) return;
+    const { error } = await supabase.from("menu_items").delete().eq("id", itemToDelete);
     if (!error && restaurant?.id) loadMenuItems(restaurant.id);
+    setDeleteItemOpen(false);
+    setItemToDelete(null);
   };
 
   const renameCategory = async (categoryId, newName) => {
@@ -199,17 +230,30 @@ export default function OwnerDashboardPage() {
     return { ok: true };
   };
 
-  const deleteCategory = async (categoryId) => {
-    if (!confirm("Delete this category? Items under it will become Uncategorized.")) return;
+  // ✅ Trigger Delete Category Dialog
+  const deleteCategory = (categoryId) => {
+    setCategoryToDelete(categoryId);
+    setDeleteCategoryOpen(true);
+  };
 
-    const { error } = await supabase.from("categories").delete().eq("id", categoryId);
+  // ✅ Confirm Delete Category
+  const confirmDeleteCategory = async () => {
+    if (!categoryToDelete) return;
+
+    const { error } = await supabase.from("categories").delete().eq("id", categoryToDelete);
     if (error) {
-      alert("Failed to delete category: " + error.message);
-      return;
+      setInfoDialogConfig({
+        title: "Error",
+        description: "Failed to delete category: " + error.message,
+        isError: true,
+      });
+      setInfoDialogOpen(true);
+    } else {
+      await loadCategories(restaurant.id);
+      await loadMenuItems(restaurant.id);
     }
-
-    await loadCategories(restaurant.id);
-    await loadMenuItems(restaurant.id);
+    setDeleteCategoryOpen(false);
+    setCategoryToDelete(null);
   };
 
   const handleLogout = async () => {
@@ -222,7 +266,12 @@ export default function OwnerDashboardPage() {
 
     const n = Number(tableCount || 0);
     if (!n || n < 1 || n > 200) {
-      alert("Please enter a valid number of tables (1 to 200).");
+      setInfoDialogConfig({
+        title: "Invalid Input",
+        description: "Please enter a valid number of tables (1 to 200).",
+        isError: true,
+      });
+      setInfoDialogOpen(true);
       return;
     }
 
@@ -242,14 +291,29 @@ export default function OwnerDashboardPage() {
 
       const json = await res.json();
       if (!res.ok) {
-        alert(json?.error || "Failed to generate tables.");
+        setInfoDialogConfig({
+          title: "Error",
+          description: json?.error || "Failed to generate tables.",
+          isError: true,
+        });
+        setInfoDialogOpen(true);
         return;
       }
 
       await loadTables(restaurant.id);
-      alert(`✅ Tables generated (created: ${json.created ?? 0})`);
+      setInfoDialogConfig({
+        title: "Success",
+        description: `✅ Tables generated (created: ${json.created ?? 0})`,
+        isError: false,
+      });
+      setInfoDialogOpen(true);
     } catch (e) {
-      alert(e?.message || "Server error generating tables.");
+      setInfoDialogConfig({
+        title: "Error",
+        description: e?.message || "Server error generating tables.",
+        isError: true,
+      });
+      setInfoDialogOpen(true);
     } finally {
       setGeneratingTables(false);
     }
@@ -329,6 +393,68 @@ export default function OwnerDashboardPage() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* ✅ Delete Item Dialog */}
+      <AlertDialog open={deleteItemOpen} onOpenChange={setDeleteItemOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+              <TriangleAlert className="h-5 w-5" />
+              Delete Item
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this item? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteItem} className="bg-destructive hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* ✅ Delete Category Dialog */}
+      <AlertDialog open={deleteCategoryOpen} onOpenChange={setDeleteCategoryOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+              <TriangleAlert className="h-5 w-5" />
+              Delete Category
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Delete this category? Items under it will become Uncategorized.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteCategory} className="bg-destructive hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* ✅ Info/Error Dialog */}
+      <AlertDialog open={infoDialogOpen} onOpenChange={setInfoDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className={`flex items-center gap-2 ${infoDialogConfig.isError ? "text-destructive" : "text-green-600"}`}>
+              {infoDialogConfig.isError ? <TriangleAlert className="h-5 w-5" /> : <CheckCircle className="h-5 w-5" />}
+              {infoDialogConfig.title}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {infoDialogConfig.description}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setInfoDialogOpen(false)}>
+              Okay
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

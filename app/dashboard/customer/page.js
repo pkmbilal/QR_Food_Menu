@@ -76,6 +76,7 @@ export default function CustomerDashboardPage() {
           {/* Desktop */}
           <div className="hidden lg:block space-y-6">
             <ProfileCard user={user} profile={profile} />
+            <RequestOwnerCard />
           </div>
 
           <div className="hidden lg:block lg:col-span-2 space-y-6">

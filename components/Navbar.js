@@ -193,7 +193,7 @@ export default function Navbar() {
                 {profile.role === "customer" && (
                   <DropdownMenuItem asChild>
                     <Link
-                      href="/dashboard/request-restaurant"
+                      href="/dashboard/customer/request-restaurant"
                       className="cursor-pointer"
                     >
                       <span className="mr-1">

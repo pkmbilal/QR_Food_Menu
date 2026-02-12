@@ -5,7 +5,18 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { signUp } from '@/lib/auth'
 
-import { Pizza } from 'lucide-react'
+import { Pizza, MailCheck } from 'lucide-react'
+
+// shadcn
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
 
 export default function SignupPage() {
   // Hide navbar on this page
@@ -18,11 +29,21 @@ export default function SignupPage() {
     fullName: '',
     email: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
   })
+
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+
+  // ✅ dialog state
+  const [otpDialogOpen, setOtpDialogOpen] = useState(false)
+  const [pendingEmail, setPendingEmail] = useState('')
+
   const router = useRouter()
+
+  const goVerify = (email) => {
+    router.push(`/auth/verify?email=${encodeURIComponent(email)}`)
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -36,9 +57,14 @@ export default function SignupPage() {
       return
     }
 
-    // Validate password length
-    if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters')
+    // Validate password pattern
+    // Min 6 chars, 1 uppercase, 1 lowercase, 1 number, 1 special char
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{6,}$/
+
+    if (!passwordRegex.test(formData.password)) {
+      setError(
+        'Password must be at least 6 characters long and include at least one uppercase letter, one lowercase letter, one number, and one special character.'
+      )
       setLoading(false)
       return
     }
@@ -56,9 +82,10 @@ export default function SignupPage() {
         return
       }
 
-      // Success! Redirect to dashboard
-      alert('Account created successfully! Welcome to QR Menu System.')
-      router.push('/dashboard')
+      // ✅ Open shadcn dialog instead of browser alert
+      setPendingEmail(formData.email)
+      setOtpDialogOpen(true)
+      setLoading(false)
     } catch (err) {
       setError('Something went wrong: ' + err.message)
       setLoading(false)
@@ -67,6 +94,48 @@ export default function SignupPage() {
 
   return (
     <>
+      {/* ✅ OTP Success Dialog */}
+      <Dialog
+        open={otpDialogOpen}
+        onOpenChange={(open) => {
+          setOtpDialogOpen(open)
+          // optional: if they close it, still take them to verify
+          // if (!open && pendingEmail) goVerify(pendingEmail)
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-green-50">
+                <MailCheck className="h-5 w-5 text-green-600" />
+              </span>
+              Verification code sent ✅
+            </DialogTitle>
+            <DialogDescription className="mt-2">
+              We sent a verification code to{' '}
+              <span className="font-semibold text-gray-900">{pendingEmail}</span>.
+              <br />
+              Enter the code to activate your account.
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => setOtpDialogOpen(false)}
+            >
+              Close
+            </Button>
+            <Button
+              className="bg-primary hover:bg-green-600"
+              onClick={() => goVerify(pendingEmail)}
+            >
+              Continue
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* MOBILE wrapper */}
       <div className="md:hidden min-h-screen bg-white flex items-center justify-center px-0">
         <div className="w-full min-h-screen p-8 flex flex-col justify-center">
@@ -180,7 +249,7 @@ export default function SignupPage() {
         </div>
       </div>
 
-      {/* DESKTOP wrapper (green gradient bg) */}
+      {/* DESKTOP wrapper */}
       <div className="hidden md:flex min-h-screen bg-gradient-to-br from-green-50 to-green-100 items-center justify-center px-4">
         <div className="bg-white rounded-lg shadow-xl p-8 w-full max-w-md">
           <div className="flex flex-col items-center justify-center mb-6">
