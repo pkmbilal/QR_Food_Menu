@@ -1,17 +1,13 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import QRCode from 'qrcode'
-import Link from 'next/link'
-import {
-  Download,
-  Printer,
-  ExternalLink,
-  QrCode,
-  Loader2,
-} from 'lucide-react'
+import { toast } from 'sonner'
+import { toPng } from 'html-to-image'
+import { Download, Printer, ExternalLink, QrCode, Loader2 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -22,23 +18,18 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { toast } from 'sonner'
 
-// ✅ NEW: export DOM -> PNG
-import { toPng } from 'html-to-image'
-
-// ✅ NEW: template component
 import QRCodeTemplateCard from '@/components/qr/QRCodeTemplateCard'
 
 export default function QRCodeClientPage({ restaurantSlug }) {
   const router = useRouter()
+  const searchParams = useSearchParams()
+
   const slug = decodeURIComponent(String(restaurantSlug || '')).trim()
 
   const [restaurant, setRestaurant] = useState(null)
-
-  // ✅ your table token is restaurant_tables.code
-  const [tables, setTables] = useState([]) // {id, table_number, code}
-  const [selectedTableId, setSelectedTableId] = useState('general') // "general" or table.id
+  const [tables, setTables] = useState([])
+  const [selectedTableId, setSelectedTableId] = useState('general')
 
   const [qrCodeUrl, setQrCodeUrl] = useState('')
   const [menuUrl, setMenuUrl] = useState('')
@@ -46,29 +37,24 @@ export default function QRCodeClientPage({ restaurantSlug }) {
   const [loading, setLoading] = useState(true)
   const [roleChecked, setRoleChecked] = useState(false)
 
-  // ✅ NEW: ref to the printable/downloadable template
+  // Ref for export
   const templateRef = useRef(null)
 
   const selectedTable = useMemo(() => {
     if (selectedTableId === 'general') return null
-    return tables.find((t) => t.id === selectedTableId) || null
+    return tables.find((t) => String(t.id) === String(selectedTableId)) || null
   }, [selectedTableId, tables])
 
-  // ✅ Build the URL exactly like your existing table QR system: ?t=<code>
   const encodedUrl = useMemo(() => {
     if (!slug) return ''
     if (typeof window === 'undefined') return ''
 
     const base = `${window.location.origin}/menu/${slug}`
-
     if (!selectedTable) return base
 
-    // code is the token you already use in your system
     if (selectedTable.code) {
       return `${base}?t=${encodeURIComponent(selectedTable.code)}`
     }
-
-    // fallback only if code missing (shouldn't happen)
     return `${base}?table=${encodeURIComponent(selectedTable.table_number)}`
   }, [slug, selectedTable])
 
@@ -88,7 +74,6 @@ export default function QRCodeClientPage({ restaurantSlug }) {
           setRoleChecked(false)
         }
 
-        // 1) Logged-in user
         const { data: userRes } = await supabase.auth.getUser()
         const user = userRes?.user
 
@@ -98,14 +83,11 @@ export default function QRCodeClientPage({ restaurantSlug }) {
           return
         }
 
-        // 2) Role check (✅ your table is user_profiles)
-        const { data: profile, error: profErr } = await supabase
+        const { data: profile } = await supabase
           .from('user_profiles')
           .select('id, role')
           .eq('id', user.id)
           .maybeSingle()
-
-        if (profErr) console.log('user_profiles error:', profErr)
 
         const role = String(profile?.role || '').toLowerCase()
         const isAdmin = role === 'admin'
@@ -117,14 +99,11 @@ export default function QRCodeClientPage({ restaurantSlug }) {
           return
         }
 
-        // 3) Fetch restaurant by slug
-        const { data: rest, error: restErr } = await supabase
+        const { data: rest } = await supabase
           .from('restaurants')
           .select('*')
           .eq('slug', slug)
           .maybeSingle()
-
-        if (restErr) console.log('restaurants error:', restErr)
 
         if (!rest) {
           toast.error(`Restaurant not found: ${slug}`)
@@ -132,7 +111,7 @@ export default function QRCodeClientPage({ restaurantSlug }) {
           return
         }
 
-        // 4) Ownership check (admin bypass)
+        // Ownership check (admin bypass)
         if (!isAdmin) {
           const uid = user.id
           const email = (user.email || '').toLowerCase().trim()
@@ -141,20 +120,13 @@ export default function QRCodeClientPage({ restaurantSlug }) {
 
           const ownerEmailMatch = ownerEmail && email && ownerEmail === email
 
-          // Optional claim owner_id if missing but email matches
           if (!ownerId && ownerEmailMatch) {
             const { error: claimErr } = await supabase
               .from('restaurants')
               .update({ owner_id: uid })
               .eq('id', rest.id)
 
-            if (claimErr) {
-              console.log('owner_id claim error:', claimErr)
-              toast.warning('Owner matched by email, but failed to store owner_id.')
-            } else {
-              rest.owner_id = uid
-              toast.success('Restaurant linked to your owner account ✅')
-            }
+            if (!claimErr) rest.owner_id = uid
           }
 
           const finalOwnerOk =
@@ -169,7 +141,6 @@ export default function QRCodeClientPage({ restaurantSlug }) {
 
         if (mounted) setRestaurant(rest)
 
-        // 5) Fetch tables with the actual token column: code ✅
         const { data: tableRows, error: tableErr } = await supabase
           .from('restaurant_tables')
           .select('id, table_number, code, is_active')
@@ -201,6 +172,24 @@ export default function QRCodeClientPage({ restaurantSlug }) {
     }
   }, [slug, router])
 
+  // ✅ NEW: Auto-select table based on URL query
+  // Supported:
+  // - /dashboard/qr/[slug]?tableId=<uuid>
+  // - /dashboard/qr/[slug]?code=<tableCode>
+  useEffect(() => {
+    const tableId = searchParams?.get('tableId')
+    if (tableId) {
+      setSelectedTableId(tableId)
+      return
+    }
+
+    const code = searchParams?.get('code')
+    if (code && tables?.length) {
+      const match = tables.find((t) => String(t.code) === String(code))
+      if (match) setSelectedTableId(match.id)
+    }
+  }, [searchParams, tables])
+
   // Generate QR whenever encodedUrl changes
   useEffect(() => {
     let mounted = true
@@ -211,7 +200,7 @@ export default function QRCodeClientPage({ restaurantSlug }) {
 
       try {
         const qr = await QRCode.toDataURL(encodedUrl, {
-          width: 1000,
+          width: 1200,
           margin: 2,
           color: { dark: '#000000', light: '#FFFFFF' },
         })
@@ -228,7 +217,22 @@ export default function QRCodeClientPage({ restaurantSlug }) {
     }
   }, [encodedUrl])
 
-  // ✅ Download the TEMPLATE (not the QR image)
+  // ✅ ensure fonts & images are ready before exporting
+  const ensureAssetsReady = async () => {
+    try {
+      if (document?.fonts?.ready) {
+        await document.fonts.ready
+      }
+    } catch {}
+
+    await new Promise((resolve) => {
+      const img = new window.Image()
+      img.onload = resolve
+      img.onerror = resolve
+      img.src = '/logo.png'
+    })
+  }
+
   const handleDownloadTemplate = async () => {
     try {
       if (!templateRef.current) return
@@ -237,15 +241,18 @@ export default function QRCodeClientPage({ restaurantSlug }) {
         return
       }
 
+      await ensureAssetsReady()
+
       const suffix =
         selectedTableId === 'general'
           ? 'menu'
           : `table-${String(selectedTable?.table_number ?? 'x')}`
 
-      // turn component into PNG
-      const dataUrl = await toPng(templateRef.current, {
+      const node = templateRef.current
+
+      const dataUrl = await toPng(node, {
         cacheBust: true,
-        pixelRatio: 2, // crisp
+        pixelRatio: 4,
         backgroundColor: '#ffffff',
       })
 
@@ -261,7 +268,6 @@ export default function QRCodeClientPage({ restaurantSlug }) {
     }
   }
 
-  // ✅ Print only the template (CSS hides everything else)
   const handlePrint = () => window.print()
 
   if (loading || !roleChecked) {
@@ -299,8 +305,7 @@ export default function QRCodeClientPage({ restaurantSlug }) {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8 print:bg-white print:p-0">
-      {/* SCREEN UI */}
-      <div className="max-w-4xl mx-auto space-y-8 no-print">
+      <div className="max-w-4xl mx-auto space-y-8 print:hidden">
         <div className="text-center space-y-2">
           <h1 className="text-3xl font-bold tracking-tight text-foreground">
             QR Code Template Generator
@@ -325,33 +330,30 @@ export default function QRCodeClientPage({ restaurantSlug }) {
           </CardHeader>
 
           <CardContent className="pt-6 space-y-6">
-            <div className="w-full flex items-center justify-center space-y-2">
-              <div className='md:w-1/2 w-full'>
+            <div className="w-full flex items-center justify-center">
+              <div className="md:w-1/2 w-full space-y-2">
                 <label className="text-sm font-medium text-foreground">QR Type</label>
-
                 <select
                   className="w-full h-10 rounded-md border border-border bg-background px-3 text-sm"
                   value={selectedTableId}
                   onChange={(e) => setSelectedTableId(e.target.value)}
                 >
                   <option value="general">General Menu QR</option>
-
                   {tables.map((t) => (
                     <option key={t.id} value={t.id}>
                       Table {t.table_number}
                     </option>
                   ))}
                 </select>
-              </div>
 
-              {tables.length === 0 && (
-                <p className="text-xs text-muted-foreground">
-                  No tables found. Create tables first to generate table QR codes.
-                </p>
-              )}
+                {tables.length === 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    No tables found. Create tables first to generate table QR codes.
+                  </p>
+                )}
+              </div>
             </div>
 
-            {/* ✅ Template preview */}
             <div className="flex justify-center">
               <div className="rounded-xl bg-white p-4 overflow-auto max-w-full">
                 <QRCodeTemplateCard
@@ -398,33 +400,48 @@ export default function QRCodeClientPage({ restaurantSlug }) {
         </Card>
       </div>
 
-      {/* PRINT-ONLY AREA */}
-      <div className="hidden print:block print-only">
-        <div className="min-h-screen flex items-center justify-center p-10 bg-white">
-          <QRCodeTemplateCard
-            restaurant={restaurant}
-            selectedTableId={selectedTableId}
-            selectedTable={selectedTable}
-            qrCodeUrl={qrCodeUrl}
-            menuUrl={menuUrl}
-          />
+      <div id="print-root" className="hidden print:block">
+        <div className="min-h-screen flex items-center justify-center bg-white">
+          <div style={{ width: '9cm', height: '12cm' }}>
+            <QRCodeTemplateCard
+              restaurant={restaurant}
+              selectedTableId={selectedTableId}
+              selectedTable={selectedTable}
+              qrCodeUrl={qrCodeUrl}
+              menuUrl={menuUrl}
+            />
+          </div>
         </div>
       </div>
 
       <style jsx global>{`
         @media print {
           @page {
-            margin: 12mm;
             size: A4;
+            margin: 12mm;
           }
+
+          html,
           body {
             background: white !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
           }
-          .no-print {
-            display: none !important;
+
+          body * {
+            visibility: hidden !important;
           }
-          .print-only {
-            display: block !important;
+
+          #print-root,
+          #print-root * {
+            visibility: visible !important;
+          }
+
+          #print-root {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 100%;
           }
         }
       `}</style>

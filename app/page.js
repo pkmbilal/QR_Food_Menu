@@ -157,8 +157,8 @@ export default async function HomePage() {
             {/* Brand */}
             <div className="col-span-1 md:col-span-2">
               <div className="flex items-center gap-2 mb-4">
-                <Pizza size={36} color="#00c951" strokeWidth={2.5}/>
-                <span className="text-2xl font-bold text-primary">QR Menu</span>
+                <Pizza size={36} color="#00c951" strokeWidth={2.5} />
+                <span className="text-2xl font-bold text-primary">ScanEat</span>
               </div>
               <p className="text-gray-700">
                 Making restaurant ordering simple, fast, and contactless.

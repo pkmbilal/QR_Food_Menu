@@ -37,6 +37,8 @@ import {
   Gauge,
 } from "lucide-react";
 
+import Image from "next/image";
+
 export default function Navbar() {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
@@ -124,12 +126,8 @@ export default function Navbar() {
         {/* Logo */}
         <Link
           href="/"
-          className="flex items-center gap-2 hover:opacity-80 transition-opacity"
         >
-          <span className="text-3xl">
-            <Pizza size={36} color="#00c951" strokeWidth={2.5} />
-          </span>
-          <span className="text-2xl font-bold text-primary">ScanEat</span>
+          <Image src="/logo.svg" alt="ScanEat Logo" width={180} height={50}/>
         </Link>
 
         {/* Desktop Nav */}

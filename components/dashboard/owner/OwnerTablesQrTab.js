@@ -1,8 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { QrCode } from "lucide-react";
 
 export default function OwnerTablesQrTab({
   restaurant,
@@ -35,8 +37,8 @@ export default function OwnerTablesQrTab({
       </CardHeader>
 
       <CardContent className="space-y-4">
-        <div className="flex flex-col md:flex-row gap-3 md:items-end">
-          <div className="flex-1">
+        <div className="flex flex-col md:flex-row gap-3 md:items-center">
+          <div className="flex-1 items-center">
             <label className="text-sm font-semibold">Number of tables</label>
             <input
               type="number"
@@ -71,10 +73,7 @@ export default function OwnerTablesQrTab({
                 {baseUrl}/menu/{restaurant.slug}
               </p>
             </div>
-            <Button
-              variant="outline"
-              onClick={() => copy(`${baseUrl}/menu/${restaurant.slug}`)}
-            >
+            <Button variant="outline" onClick={() => copy(`${baseUrl}/menu/${restaurant.slug}`)}>
               Copy link
             </Button>
           </div>
@@ -96,7 +95,11 @@ export default function OwnerTablesQrTab({
           ) : (
             <div className="divide-y">
               {tables.map((t) => {
-                const url = `${baseUrl}/menu/${restaurant.slug}?t=${encodeURIComponent(
+                const url = `${baseUrl}/menu/${restaurant.slug}?t=${encodeURIComponent(t.code)}`;
+
+                // ✅ Option 1: redirect to existing QR page under /qr/[restaurantSlug]
+                // and pass table code via query param (your QR page reads ?code=...)
+                const qrHref = `/qr/${encodeURIComponent(restaurant.slug)}?code=${encodeURIComponent(
                   t.code
                 )}`;
 
@@ -116,6 +119,13 @@ export default function OwnerTablesQrTab({
                     </div>
 
                     <div className="flex gap-2">
+                      <Button asChild variant="secondary">
+                        <Link href={qrHref}>
+                          <QrCode className="mr-2 h-4 w-4" />
+                          QR Code
+                        </Link>
+                      </Button>
+
                       <Button variant="outline" onClick={() => copy(url)}>
                         Copy link
                       </Button>
