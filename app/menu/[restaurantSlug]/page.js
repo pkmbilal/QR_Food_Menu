@@ -9,6 +9,7 @@ import { QrCode, Phone } from "lucide-react";
 
 export default async function MenuPage({ params, searchParams }) {
   const { restaurantSlug } = await params;
+  console.log("restaurant.id", restaurant.id, "restaurant.slug", restaurant.slug)
 
   const sp = await searchParams; // ✅ important in Next 15+
   const tableCode = (sp?.t ?? "").toString();

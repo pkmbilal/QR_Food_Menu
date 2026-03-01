@@ -1,5 +1,5 @@
 import Link from "next/link"
-import FavoriteButtonClient from "@/components/FavoriteButtonClient"
+import FavoriteButton from "@/components/FavoriteButton"
 
 import { Card, CardContent } from "@/components/ui/card"
 import { UtensilsCrossed, MapPin, Star, Clock } from "lucide-react"
@@ -16,7 +16,7 @@ export default function RestaurantCard({ restaurant }) {
     <div className="relative group">
       {/* Favorite */}
       <div className="absolute top-2 right-2 z-20">
-        <FavoriteButtonClient restaurantId={id} />
+        <FavoriteButton restaurantId={id} />
       </div>
 
       <Link href={`/menu/${slug}`} className="block">
@@ -42,7 +42,7 @@ export default function RestaurantCard({ restaurant }) {
                 <div className="absolute inset-0 hidden sm:block bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
 
                 {/* Desktop-only rating/eta pills */}
-                <div className="hidden sm:flex absolute bottom-3 left-3 right-3 items-center justify-between">
+                {/* <div className="hidden sm:flex absolute bottom-3 left-3 right-3 items-center justify-between">
                   <div className="inline-flex items-center gap-1 rounded-full bg-white/90 px-2.5 py-1 text-xs font-semibold text-gray-900 shadow">
                     <Star className="h-4 w-4" />
                     {rating}
@@ -51,7 +51,7 @@ export default function RestaurantCard({ restaurant }) {
                     <Clock className="h-4 w-4" />
                     {eta}
                   </div>
-                </div>
+                </div> */}
               </div>
             </div>
 

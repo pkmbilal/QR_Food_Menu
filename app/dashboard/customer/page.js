@@ -1,7 +1,6 @@
 'use client'
 
-import { useMemo, useCallback } from 'react'
-import Link from 'next/link'
+import { useMemo, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { signOut, getUserFavorites, removeFromFavorites } from '@/lib/auth'
 
@@ -39,6 +38,32 @@ export default function CustomerDashboardPage() {
     router.push('/auth/login')
   }, [router])
 
+  const refreshFavorites = useCallback(async () => {
+    if (!user?.id) return
+    const { data, error } = await getUserFavorites(user.id)
+    if (!error) setFavorites(data || [])
+  }, [user?.id, setFavorites])
+
+  // ✅ refresh on mount + when tab focuses
+  useEffect(() => {
+    refreshFavorites()
+
+    const onFocus = () => refreshFavorites()
+    window.addEventListener('focus', onFocus)
+    return () => window.removeEventListener('focus', onFocus)
+  }, [refreshFavorites])
+
+  // ✅ listen for favorites changes from anywhere (FavoriteButton dispatches it)
+  useEffect(() => {
+    const onChanged = (e) => {
+      if (e?.detail?.userId && e.detail.userId !== user?.id) return
+      refreshFavorites()
+    }
+
+    window.addEventListener('favorites:changed', onChanged)
+    return () => window.removeEventListener('favorites:changed', onChanged)
+  }, [refreshFavorites, user?.id])
+
   const handleRemoveFavorite = useCallback(
     async (restaurantId, restaurantName) => {
       if (!user?.id) return
@@ -46,11 +71,10 @@ export default function CustomerDashboardPage() {
 
       const { error } = await removeFromFavorites(user.id, restaurantId)
       if (!error) {
-        const { data } = await getUserFavorites(user.id)
-        setFavorites(data || [])
+        await refreshFavorites()
       }
     },
-    [user?.id, setFavorites]
+    [user?.id, refreshFavorites]
   )
 
   return (
@@ -62,7 +86,10 @@ export default function CustomerDashboardPage() {
       />
 
       <div className="max-w-7xl mx-auto px-4 py-6">
-        <StatsRowMobile favoritesCount={favorites.length} requestsCount={requests.length} />
+        <StatsRowMobile
+          favoritesCount={favorites.length}
+          requestsCount={requests.length}
+        />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Mobile stack */}

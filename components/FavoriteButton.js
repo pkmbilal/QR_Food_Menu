@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { Heart } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -18,17 +18,12 @@ export default function FavoriteButton({ restaurantId }) {
   const [checking, setChecking] = useState(true)
   const router = useRouter()
 
-  useEffect(() => {
-    checkIfFavorited()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [restaurantId])
-
-  async function checkIfFavorited() {
+  const checkIfFavorited = useCallback(async () => {
+    if (!restaurantId) return
     setChecking(true)
 
     try {
       const { user: currentUser } = await getCurrentUser()
-
       if (!currentUser) {
         setUser(null)
         setIsFavorite(false)
@@ -41,7 +36,6 @@ export default function FavoriteButton({ restaurantId }) {
         currentUser.id,
         restaurantId
       )
-
       setIsFavorite(!!favorited)
     } catch (err) {
       console.error("Check favorite error:", err)
@@ -49,7 +43,14 @@ export default function FavoriteButton({ restaurantId }) {
     } finally {
       setChecking(false)
     }
-  }
+  }, [restaurantId])
+
+  useEffect(() => {
+    checkIfFavorited()
+    const onFocus = () => checkIfFavorited()
+    window.addEventListener("focus", onFocus)
+    return () => window.removeEventListener("focus", onFocus)
+  }, [checkIfFavorited])
 
   const handleToggleFavorite = async (e) => {
     e.preventDefault()
@@ -65,38 +66,39 @@ export default function FavoriteButton({ restaurantId }) {
     setLoading(true)
 
     try {
+      let changed = false
+
       if (isFavorite) {
         const { error } = await removeFromFavorites(user.id, restaurantId)
-
         if (error) {
-          console.error("Remove error:", error)
           alert("Error removing favorite: " + error.message)
         } else {
           setIsFavorite(false)
+          changed = true
         }
       } else {
         const { error } = await addToFavorites(user.id, restaurantId)
-
         if (error) {
-          if (error.code === "23505") {
-            setIsFavorite(true)
-          } else {
-            console.error("Add error:", error)
-            alert("Error adding favorite: " + error.message)
-          }
+          if (error.code === "23505") setIsFavorite(true)
+          else alert("Error adding favorite: " + error.message)
         } else {
           setIsFavorite(true)
+          changed = true
         }
       }
-    } catch (err) {
-      console.error("Toggle favorite error:", err)
-      alert("Error: " + err.message)
+
+      if (changed) {
+        window.dispatchEvent(
+          new CustomEvent("favorites:changed", {
+            detail: { userId: user.id, restaurantId },
+          })
+        )
+      }
     } finally {
       setLoading(false)
     }
   }
 
-  // Loading skeleton while checking
   if (checking) {
     return (
       <div className="h-10 w-10 rounded-full bg-muted animate-pulse grid place-items-center">
@@ -118,9 +120,7 @@ export default function FavoriteButton({ restaurantId }) {
         "h-10 w-10 rounded-full shadow-md backdrop-blur-sm transition",
         "hover:scale-110 active:scale-95",
         loading ? "opacity-60" : "",
-        isFavorite
-          ? "bg-red-100 hover:bg-red-200"
-          : "bg-white/90 hover:bg-white",
+        isFavorite ? "bg-red-100 hover:bg-red-200" : "bg-white/90 hover:bg-white",
       ].join(" ")}
     >
       <Heart

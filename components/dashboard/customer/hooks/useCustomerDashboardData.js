@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   getCurrentUser,
@@ -18,10 +18,42 @@ export function useCustomerDashboardData() {
   const [requests, setRequests] = useState([])
   const [loading, setLoading] = useState(true)
 
+  const refreshFavorites = useCallback(
+    async (uid) => {
+      const userId = uid || user?.id
+      if (!userId) return
+
+      const { data, error } = await getUserFavorites(userId)
+      if (error) {
+        console.error('getUserFavorites error:', error)
+        return
+      }
+      setFavorites(Array.isArray(data) ? data : [])
+    },
+    [user?.id]
+  )
+
+  const refreshRequests = useCallback(
+    async (uid) => {
+      const userId = uid || user?.id
+      if (!userId) return
+
+      const { data, error } = await getUserRequests(userId)
+      if (error) {
+        console.error('getUserRequests error:', error)
+        return
+      }
+      setRequests(Array.isArray(data) ? data : [])
+    },
+    [user?.id]
+  )
+
   useEffect(() => {
     let mounted = true
 
     async function load() {
+      setLoading(true)
+
       const { user: currentUser, error: userError } = await getCurrentUser()
 
       if (userError || !currentUser) {
@@ -48,8 +80,8 @@ export function useCustomerDashboardData() {
       ])
 
       if (!mounted) return
-      setFavorites(userFavorites || [])
-      setRequests(userRequests || [])
+      setFavorites(Array.isArray(userFavorites) ? userFavorites : [])
+      setRequests(Array.isArray(userRequests) ? userRequests : [])
       setLoading(false)
     }
 
@@ -59,13 +91,37 @@ export function useCustomerDashboardData() {
     }
   }, [router])
 
+  // ✅ refresh when user returns to the tab (very common)
+  useEffect(() => {
+    const onFocus = () => {
+      refreshFavorites()
+      refreshRequests()
+    }
+    window.addEventListener('focus', onFocus)
+    return () => window.removeEventListener('focus', onFocus)
+  }, [refreshFavorites, refreshRequests])
+
+  // ✅ refresh when FavoriteButton broadcasts changes
+  useEffect(() => {
+    const onChanged = (e) => {
+      const eventUserId = e?.detail?.userId
+      if (eventUserId && user?.id && eventUserId !== user.id) return
+      refreshFavorites()
+    }
+
+    window.addEventListener('favorites:changed', onChanged)
+    return () => window.removeEventListener('favorites:changed', onChanged)
+  }, [refreshFavorites, user?.id])
+
   return {
     user,
     profile,
     favorites,
     setFavorites,
+    refreshFavorites, // ✅ exported if you want manual refresh
     requests,
     setRequests,
+    refreshRequests, // ✅ exported if you want manual refresh
     loading,
   }
 }

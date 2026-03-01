@@ -1,11 +1,13 @@
-'use client'
+"use client";
 
-import Link from 'next/link'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Heart, ExternalLink, X } from 'lucide-react'
+import Link from "next/link";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Heart, ExternalLink, X } from "lucide-react";
 
-export default function FavoritesCard({ favorites, onRemove }) {
+export default function FavoritesCard({ favorites = [], onRemove }) {
+  const items = Array.isArray(favorites) ? favorites : [];
+
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -16,7 +18,7 @@ export default function FavoritesCard({ favorites, onRemove }) {
       </CardHeader>
 
       <CardContent>
-        {favorites.length === 0 ? (
+        {items.length === 0 ? (
           <div className="rounded-xl border bg-background p-6 text-center">
             <div className="mx-auto mb-3 h-12 w-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center">
               <Heart className="h-6 w-6" />
@@ -34,33 +36,46 @@ export default function FavoritesCard({ favorites, onRemove }) {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {favorites.map((fav) => {
-              const r = fav.restaurants
-              if (!r) return null
+            {items.map((fav) => {
+              // support both possible shapes
+              const r = fav?.restaurant || fav?.restaurants;
+              const rid = fav?.restaurant_id ?? r?.id;
+              const name = r?.name ?? `Restaurant (${rid})`;
+              const slug = r?.slug || null;
+              const address = r?.address || null;
+
+              const href = slug ? `/menu/${slug}` : "#";
 
               return (
                 <div
-                  key={fav.id}
+                  key={fav?.id ?? `${rid ?? "no-id"}-${slug ?? "no-slug"}`}
                   className="group rounded-xl border bg-background p-4 hover:shadow-sm transition relative"
                 >
-                  <Link href={`/menu/${r.slug}`} className="block">
-                    <div className="flex items-start justify-between gap-3">
+                  {slug ? (
+                    <Link href={href} className="block">
                       <div className="min-w-0">
                         <p className="font-semibold truncate group-hover:text-primary transition-colors">
-                          {r.name}
+                          {name}
                         </p>
-                        {r.address && (
+                        {address && (
                           <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                            📍 {r.address}
+                            📍 {address}
                           </p>
                         )}
                       </div>
-                    </div>
 
-                    <div className="mt-3 inline-flex items-center text-sm font-medium text-primary">
-                      View Menu <ExternalLink className="h-4 w-4 ml-1" />
+                      <div className="mt-3 inline-flex items-center text-sm font-medium text-primary">
+                        View Menu <ExternalLink className="h-4 w-4 ml-1" />
+                      </div>
+                    </Link>
+                  ) : (
+                    <div className="block">
+                      <p className="font-semibold truncate">{name}</p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Restaurant details not loaded
+                      </p>
                     </div>
-                  </Link>
+                  )}
 
                   <Button
                     variant="ghost"
@@ -68,18 +83,20 @@ export default function FavoritesCard({ favorites, onRemove }) {
                     className="absolute top-3 right-3 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition"
                     title="Remove from favorites"
                     onClick={(e) => {
-                      e.preventDefault()
-                      onRemove?.(fav.restaurant_id, r.name)
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (!rid) return;
+                      onRemove?.(rid, name);
                     }}
                   >
                     <X className="h-4 w-4" />
                   </Button>
                 </div>
-              )
+              );
             })}
           </div>
         )}
       </CardContent>
     </Card>
-  )
+  );
 }
