@@ -1,4 +1,6 @@
 "use client";
+import { supabaseBrowser } from "@/lib/supabase/client";
+const supabase = supabaseBrowser();
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -8,8 +10,7 @@ import {
   getUserProfile,
   getUserRestaurant,
   signOut,
-} from "@/lib/auth";
-import { supabase } from "@/lib/supabase";
+} from "@/lib/auth/client";
 
 import {
   Card,

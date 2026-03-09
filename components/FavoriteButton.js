@@ -9,7 +9,7 @@ import {
   addToFavorites,
   removeFromFavorites,
   isFavorited,
-} from "@/lib/auth"
+} from "@/lib/auth/client"
 
 export default function FavoriteButton({ restaurantId }) {
   const [isFavorite, setIsFavorite] = useState(false)

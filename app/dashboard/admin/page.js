@@ -1,11 +1,12 @@
 'use client'
+import { supabaseBrowser } from "@/lib/supabase/client";
+const supabase = supabaseBrowser();
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Pencil, Trash2, Ban, CheckCircle, X, TriangleAlert } from 'lucide-react'
-import { getCurrentUser, getUserProfile } from '@/lib/auth'
-import { supabase } from '@/lib/supabase'
+import { getCurrentUser, getUserProfile } from '@/lib/auth/client'
 
 import {
   AlertDialog,

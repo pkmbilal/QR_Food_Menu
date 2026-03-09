@@ -1,9 +1,9 @@
-import { supabase } from '@/lib/supabase'
+import { supabaseServer } from "@/lib/supabase/server";
 import RestaurantCard from '@/components/restaurant/RestaurantCard'
 import RestaurantsFilters from '@/components/restaurant/RestaurantsFilters'
 
 export default async function RestaurantsPage({ searchParams }) {
-  // ✅ Next.js 15 can pass searchParams as Promise in some setups
+  const supabase = supabaseServer();
   const params = await Promise.resolve(searchParams ?? {})
 
   const type = (params?.type ?? 'restaurants').toString()

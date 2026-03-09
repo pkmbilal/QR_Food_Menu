@@ -1,32 +1,39 @@
 import Link from "next/link";
-import { supabase } from "@/lib/supabase";
+import { supabaseServer } from "@/lib/supabase/server";
 
 import MenuClient from "@/components/MenuClient";
 import CartButton from "@/components/CartButton";
 import FavoriteButton from "@/components/FavoriteButton";
 import TableCodePersist from "@/components/TableCodePersist";
-import { QrCode, Phone } from "lucide-react";
+import { Phone } from "lucide-react";
 
 export default async function MenuPage({ params, searchParams }) {
-  const { restaurantSlug } = await params;
-  console.log("restaurant.id", restaurant.id, "restaurant.slug", restaurant.slug)
+  const supabase = supabaseServer();
 
-  const sp = await searchParams; // ✅ important in Next 15+
+  // ✅ Next 16: params/searchParams may be Promises
+  const p = await Promise.resolve(params);
+  const sp = await Promise.resolve(searchParams ?? {});
+
+  const restaurantSlug = decodeURIComponent(String(p?.restaurantSlug ?? "")).trim();
   const tableCode = (sp?.t ?? "").toString();
 
   const { data: restaurant, error: restaurantError } = await supabase
     .from("restaurants")
-    .select(`
+    .select(
+      `
       *,
       city:cities ( id, name ),
       restaurant_cuisines (
         cuisine:cuisines ( id, name )
       )
-    `)
+    `
+    )
     .eq("slug", restaurantSlug)
-    .single();
+    .maybeSingle();
 
-  if (restaurantError || !restaurant) {
+  if (restaurantError) console.error("restaurants error:", restaurantError);
+
+  if (!restaurant) {
     return (
       <div className="max-w-6xl mx-auto px-4 py-10">
         <h1 className="text-2xl font-bold">Restaurant not found</h1>
@@ -54,13 +61,10 @@ export default async function MenuPage({ params, searchParams }) {
   if (itemsError) console.error("menu_items error:", itemsError);
 
   const menuItems = itemsError ? [] : items || [];
-
   const cityName = restaurant?.city?.name || "";
 
   const cuisinePills =
-    restaurant?.restaurant_cuisines
-      ?.map((rc) => rc?.cuisine?.name)
-      .filter(Boolean) || [];
+    restaurant?.restaurant_cuisines?.map((rc) => rc?.cuisine?.name).filter(Boolean) || [];
 
   const Pill = ({ children, className = "" }) => (
     <span
@@ -76,7 +80,6 @@ export default async function MenuPage({ params, searchParams }) {
 
   return (
     <div className="min-h-screen">
-      {/* ✅ Persist/clear table code based on URL */}
       <TableCodePersist restaurantSlug={restaurantSlug} />
 
       {/* HEADER */}
@@ -102,18 +105,12 @@ export default async function MenuPage({ params, searchParams }) {
                 </h1>
 
                 <div className="mt-4 flex flex-wrap gap-2">
-                  <Pill className="bg-emerald-500/25 border-emerald-300/30">
-                    🟢 Open now
-                  </Pill>
+                  <Pill className="bg-emerald-500/25 border-emerald-300/30">🟢 Open now</Pill>
 
                   {cityName && <Pill className="bg-white/10">📍 {cityName}</Pill>}
 
-                  {restaurant.delivery_available && (
-                    <Pill className="bg-white/10">🚚 Delivery</Pill>
-                  )}
-                  {restaurant.pickup_available && (
-                    <Pill className="bg-white/10">🧍 Pickup</Pill>
-                  )}
+                  {restaurant.delivery_available && <Pill className="bg-white/10">🚚 Delivery</Pill>}
+                  {restaurant.pickup_available && <Pill className="bg-white/10">🧍 Pickup</Pill>}
 
                   {cuisinePills.slice(0, 8).map((c) => (
                     <Pill key={c} className="bg-white/10">
@@ -121,9 +118,7 @@ export default async function MenuPage({ params, searchParams }) {
                     </Pill>
                   ))}
 
-                  {cuisinePills.length === 0 && (
-                    <Pill className="bg-white/10">🍽️ Multi-cuisine</Pill>
-                  )}
+                  {cuisinePills.length === 0 && <Pill className="bg-white/10">🍽️ Multi-cuisine</Pill>}
                 </div>
 
                 <div className="mt-4 space-y-2">
@@ -144,8 +139,6 @@ export default async function MenuPage({ params, searchParams }) {
 
                 <div className="mt-5 flex flex-wrap items-center gap-3">
                   <FavoriteButton restaurantId={restaurant.id} />
-
-                  
 
                   {restaurant.phone && (
                     <a
@@ -169,16 +162,11 @@ export default async function MenuPage({ params, searchParams }) {
       <div className="max-w-7xl mx-auto px-4 py-8">
         <MenuClient
           items={menuItems}
-          categories={[
-            ...new Set(
-              menuItems.map((item) => item?.categories?.name || "Uncategorized")
-            ),
-          ].sort()}
+          categories={[...new Set(menuItems.map((item) => item?.categories?.name || "Uncategorized"))].sort()}
           restaurant={restaurant}
         />
       </div>
 
-      {/* ✅ pass tableCode so dine-in keeps t into cart */}
       <CartButton restaurant={restaurant} tableCode={tableCode} />
     </div>
   );

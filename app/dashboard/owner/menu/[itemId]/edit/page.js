@@ -1,10 +1,11 @@
 'use client'
+import { supabaseBrowser } from "@/lib/supabase/client";
+const supabase = supabaseBrowser();
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { supabase } from '@/lib/supabase'
-import { getCurrentUser, getUserProfile, getUserRestaurant } from '@/lib/auth'
+import { getCurrentUser, getUserProfile, getUserRestaurant } from '@/lib/auth/server'
 
 export default function EditMenuItemPage() {
   const router = useRouter()

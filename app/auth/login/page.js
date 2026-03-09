@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { signIn } from "@/lib/auth";
+import { signIn } from "@/lib/auth/client";
 
 import { Pizza, Eye, EyeOff } from "lucide-react";
 

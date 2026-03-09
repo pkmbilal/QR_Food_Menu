@@ -1,9 +1,12 @@
 "use client";
 
+import { supabaseBrowser } from "@/lib/supabase/client";
+const supabase = supabaseBrowser();
+
 import { useState, useEffect, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { supabase } from "@/lib/supabase";
+
 import { Pizza, BadgeCheck } from "lucide-react";
 
 // shadcn

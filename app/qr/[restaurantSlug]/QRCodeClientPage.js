@@ -1,9 +1,10 @@
 'use client'
+import { supabaseBrowser } from "@/lib/supabase/client";
+const supabase = supabaseBrowser();
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { supabase } from '@/lib/supabase'
 import QRCode from 'qrcode'
 import { toast } from 'sonner'
 import { toPng } from 'html-to-image'

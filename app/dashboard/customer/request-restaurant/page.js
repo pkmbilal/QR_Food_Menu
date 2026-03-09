@@ -1,6 +1,7 @@
 "use client";
+import { supabaseBrowser } from "@/lib/supabase/client";
+const supabase = supabaseBrowser();
 
-import { supabase } from "@/lib/supabase";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -10,7 +11,7 @@ import {
   getUserProfile,
   submitRestaurantRequest,
   getUserRequests,
-} from "@/lib/auth";
+} from "@/lib/auth/server";
 
 // shadcn/ui
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";

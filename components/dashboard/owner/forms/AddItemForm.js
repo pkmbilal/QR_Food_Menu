@@ -1,7 +1,8 @@
-  "use client";
+"use client";
+import { supabaseBrowser } from "@/lib/supabase/client";
+const supabase = supabaseBrowser();
 
 import { useState } from "react";
-import { supabase } from "@/lib/supabase";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";

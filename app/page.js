@@ -1,11 +1,12 @@
-// import FavoriteButton from '@/components/FavoriteButton'
+import { supabaseServer } from "@/lib/supabase/server";
+
 import Link from 'next/link'
-import { supabase } from '@/lib/supabase'
 import RestaurantCard from '@/components/restaurant/RestaurantCard'
 
 import { QrCode, NotebookPen, ArrowLeftRight, Pizza } from 'lucide-react'
 
 export default async function HomePage() {
+  const supabase = supabaseServer();
   // Fetch active restaurants
   const { data: restaurants } = await supabase
     .from('restaurants')

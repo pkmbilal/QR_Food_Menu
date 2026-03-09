@@ -1,8 +1,11 @@
 'use client'
 
+import { supabaseBrowser } from "@/lib/supabase/client";
+
+const supabase = supabaseBrowser();
+
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { supabase } from '@/lib/supabase'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'

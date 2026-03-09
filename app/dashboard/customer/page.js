@@ -2,7 +2,7 @@
 
 import { useMemo, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { signOut, getUserFavorites, removeFromFavorites } from '@/lib/auth'
+import { signOut, getUserFavorites, removeFromFavorites } from '@/lib/auth/client'
 
 import DashboardShell from '@/components/dashboard/customer/DashboardShell'
 import CustomerHeader from '@/components/dashboard/customer/CustomerHeader'
@@ -64,18 +64,17 @@ export default function CustomerDashboardPage() {
     return () => window.removeEventListener('favorites:changed', onChanged)
   }, [refreshFavorites, user?.id])
 
-  const handleRemoveFavorite = useCallback(
-    async (restaurantId, restaurantName) => {
-      if (!user?.id) return
-      if (!confirm(`Remove ${restaurantName} from favorites?`)) return
+ const handleRemoveFavorite = useCallback(
+  async (restaurantId, restaurantName) => {
+    if (!user?.id) return
 
-      const { error } = await removeFromFavorites(user.id, restaurantId)
-      if (!error) {
-        await refreshFavorites()
-      }
-    },
-    [user?.id, refreshFavorites]
-  )
+    const { error } = await removeFromFavorites(user.id, restaurantId)
+    if (!error) {
+      await refreshFavorites()
+    }
+  },
+  [user?.id, refreshFavorites]
+)
 
   return (
     <DashboardShell loading={loading}>

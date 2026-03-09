@@ -28,7 +28,7 @@ export default function FavoritesCard({ favorites = [], onRemove }) {
               Browse restaurants and save your top picks.
             </p>
             <Button className="mt-4" asChild>
-              <Link href="/">
+              <Link href="/restaurants">
                 <ExternalLink className="h-4 w-4 mr-2" />
                 Browse Restaurants
               </Link>
