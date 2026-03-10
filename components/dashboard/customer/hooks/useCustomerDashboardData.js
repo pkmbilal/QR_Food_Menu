@@ -7,7 +7,7 @@ import {
   getUserProfile,
   getUserFavorites,
   getUserRequests,
-} from '@/lib/auth/server'
+} from '@/lib/auth/client'
 
 export function useCustomerDashboardData() {
   const router = useRouter()

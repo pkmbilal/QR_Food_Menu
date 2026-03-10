@@ -11,7 +11,7 @@ import {
   getUserProfile,
   submitRestaurantRequest,
   getUserRequests,
-} from "@/lib/auth/server";
+} from "@/lib/auth/client";
 
 // shadcn/ui
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
